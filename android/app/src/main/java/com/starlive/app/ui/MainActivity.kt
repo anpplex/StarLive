@@ -838,7 +838,7 @@ class MainActivity : AppCompatActivity() {
             alive -> styleStatus(
                 "已上屏",
                 UiTokens.success,
-                "星环与预览一致 · 点预览或「应用当前」可再同步",
+                "星环与预览一致 · 点预览或「应用上屏」可再同步",
             )
             launching -> styleStatus(
                 "上屏中…",
@@ -853,7 +853,7 @@ class MainActivity : AppCompatActivity() {
             else -> styleStatus(
                 "未上屏",
                 UiTokens.warning,
-                "已选「${WallpaperRepository.labelForActive(this)}」· 点「应用当前」同步到星环",
+                "已选「${WallpaperRepository.labelForActive(this)}」· 点「应用上屏」同步到星环",
             )
         }
     }

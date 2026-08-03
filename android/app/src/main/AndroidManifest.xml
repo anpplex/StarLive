@@ -78,6 +78,7 @@
 
         <activity
             android:name=".ui.ClusterStripActivity"
+            android:configChanges="uiMode|screenSize|smallestScreenSize|orientation|density|keyboard|keyboardHidden"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"

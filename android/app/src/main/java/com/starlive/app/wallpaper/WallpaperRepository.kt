@@ -469,14 +469,22 @@ object WallpaperRepository {
         return WallpaperEdgeSoftener.softenLeftEdge(scaled, fade, glass)
     }
 
+    /**
+     * Day/night for edge bake + demo asset pick.
+     * Prefer [com.starlive.app.StarLiveApp] AmbientWatch when available so
+     * **自动** tracks Avatr secure `ui_night_mode` (浅色1 / 深色2 / 自适应9).
+     */
     fun isNightish(context: Context): Boolean {
         return when (nightMode(context)) {
             "dark" -> true
             "light" -> false
             else -> {
-                val night = context.resources.configuration.uiMode and
-                    android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                night == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                val app = context.applicationContext
+                if (app is com.starlive.app.StarLiveApp) {
+                    return app.ambientWatch.effectiveNightish()
+                }
+                // Fallback without Application wiring (tests / early boot).
+                com.starlive.app.night.RemoteNightMode(context).isNightish()
             }
         }
     }

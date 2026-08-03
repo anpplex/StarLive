@@ -8,7 +8,35 @@
 
 - 在线主题商店（非兑换码路径）
 - QA 剩余 ⬜：M3 实车切歌；I1 第三方文件管理器内完整点选（选择器已通）
-- 二级页（关于/规格/定制）继续与 UiKit 对齐
+
+## [0.1.22-music] — 2026-08-03
+
+### Fixed
+
+- **假播歌让出**：Wallpaper Engine / motif 等壁纸 MediaPlayer 使 `isMusicActive` 常 true
+- `MusicPlaybackFilter`：按 usage + 包名黑名单过滤；`MediaProbe` 优先读 `activePlaybackConfigurations`
+- NLS MediaSession 同样忽略壁纸包
+
+## [0.1.21-ambient] — 2026-08-03
+
+### UX / 远端
+
+- **远端日夜自动跟随**（对齐 Lyra）：`ui_night_mode` 浅色1 / 深色2 / 自适应9 + Configuration + 22:00–06:00 时钟兜底
+- 星环壁纸 **左缘羽化按深浅重烘焙**（玻璃 #E8EAEE / #080A0B）；ambient 翻转 320ms 交叉淡入
+- 日夜 chip「自动·浅色/深色」显示当前有效；示范双图随远端日夜切换
+- `AmbientWatch` 2s 轮询 + Secure 观察（车机设置改显示模式也能跟上）
+
+## [0.1.20-ui] — 2026-08-03
+
+### UX
+
+- **二级页对齐 UiKit**：关于 / 升级到 Lyra / 规格说明 / 私人定制
+- 统一色板、卡片、主/次/幽灵按钮与首页视觉语言一致
+- 关于页版本号、检查更新、导航入口；升级页 Lyra 检测与 handoff 导出保留
+
+### Verified on device (LD249H019625)
+
+- 装机 0.1.20-ui · 启动关于/规格/定制/升级页 冒烟（见 QA-MATRIX）
 
 ## [0.1.19-qa] — 2026-08-03
 

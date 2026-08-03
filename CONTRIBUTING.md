@@ -8,7 +8,7 @@ cd android
 ./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
 ```
 
-车机安装：`./scripts/install-starlive-car.sh <SERIAL>`
+车机安装见 [README.md](./README.md)（旁路安装，勿用普通 `adb install`）。
 
 ## 约定
 

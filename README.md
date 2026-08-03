@@ -21,15 +21,14 @@
 - 跟随车机日夜模式
 - 主题兑换、壁纸定制（见 [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md)）
 
-## 构建与安装
+## 构建
 
 ```bash
 cd android
 ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
-
-# 阿维塔 / 华为车机（旁路安装）
-../scripts/install-starlive-car.sh <SERIAL>
 ```
+
+APK：`android/app/build/outputs/apk/debug/app-debug.apk`
 
 单元测试：
 
@@ -38,6 +37,30 @@ cd android
 ```
 
 更多版本说明见 [CHANGELOG.md](./CHANGELOG.md)。
+
+## 车机安装（阿维塔 / 华为）
+
+普通 `adb install` 会失败（`INSTALL_FAILED_INTERNAL_ERROR`）。需旁路安装：
+
+```bash
+SERIAL=<你的序列号>
+APK=android/app/build/outputs/apk/debug/app-debug.apk
+REMOTE=/data/local/tmp/starlive.apk
+PKG=com.starlive.app
+
+adb -s "$SERIAL" push "$APK" "$REMOTE"
+adb -s "$SERIAL" shell pm disable-user --user 12 com.android.packageinstaller
+adb -s "$SERIAL" shell pm disable-user --user 0 com.android.packageinstaller || true
+adb -s "$SERIAL" shell pm install -r -d -g -t -i com.huawei.appinstaller.car --user 12 "$REMOTE"
+adb -s "$SERIAL" shell pm install -r -d -g -t -i com.huawei.appinstaller.car --user 0 "$REMOTE" || true
+adb -s "$SERIAL" shell pm enable --user 12 com.android.packageinstaller || true
+adb -s "$SERIAL" shell pm enable --user 0 com.android.packageinstaller || true
+adb -s "$SERIAL" shell rm -f "$REMOTE"
+adb -s "$SERIAL" shell pm enable --user 12 "$PKG" || true
+adb -s "$SERIAL" shell am start --user 12 -n "$PKG/.ui.MainActivity" || true
+```
+
+也可直接从 [Releases](https://github.com/anpplex/StarLive/releases/latest) 下载 APK，再按上式安装。
 
 ## 免责声明
 

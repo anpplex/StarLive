@@ -19,10 +19,11 @@ import java.util.Calendar
  * |----------|------------------------|---------------------|
  * | 浅色     | **1**                  | NO                  |
  * | 深色     | **2**                  | YES                 |
- * | 自适应   | **9** (OEM)            | follows lamp        |
+ * | 自适应   | **9** (OEM)            | follows lamp/time   |
  *
  * OEM remotescreen paints from the **effective** theme night bit. Prefer secure
- * hard 浅色/深色 first, then Configuration, then soft clock window (22:00–06:00).
+ * hard 浅色/深色 first, then Configuration / UiModeManager effective bit, then
+ * Avatr custom clock window (22:00–06:00) only when the bit is undefined.
  *
  * Read-only for StarLive (does not force system display mode).
  */
@@ -36,16 +37,21 @@ class RemoteNightMode(context: Context) {
             MODE_LIGHT -> return DAY
             MODE_DARK -> return NIGHT
         }
+        // adaptive(9) / aosp auto(0) / unknown → effective paint
         return adaptiveEffectiveNightFraction()
     }
 
     fun isNightish(): Boolean = nightFraction() >= 0.45f
 
     /**
-     * Effective paint for 自动. Order: Configuration night bit → clock schedule.
+     * Effective paint for 自动. Order:
+     * 1. Configuration night bit (app uiMode, follows system when delivered)
+     * 2. UiModeManager nightMode when hard YES/NO (some HU lag secure vs mgr)
+     * 3. Custom clock window (22:00–06:00) — last resort only
      */
     fun adaptiveEffectiveNightFraction(): Float {
         configNightFraction()?.let { return it }
+        uiManagerHardNightFraction()?.let { return it }
         return clockNightFraction()
     }
 
@@ -90,6 +96,19 @@ class RemoteNightMode(context: Context) {
                 },
             )
         }.onFailure { Log.w(TAG, "register ui_night_mode observer failed", it) }
+        // System table fallback on some OEM builds.
+        runCatching {
+            cr.registerContentObserver(
+                Settings.System.getUriFor(KEY_UI_NIGHT_MODE),
+                false,
+                object : ContentObserver(handler) {
+                    override fun onChange(selfChange: Boolean, uri: Uri?) {
+                        Log.i(TAG, "system ui_night_mode changed → ${debugSnapshot()}")
+                        onChange()
+                    }
+                },
+            )
+        }
     }
 
     private fun readUiNightModeSecure(): Int =
@@ -111,6 +130,17 @@ class RemoteNightMode(context: Context) {
         when (app.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
             Configuration.UI_MODE_NIGHT_YES -> NIGHT
             Configuration.UI_MODE_NIGHT_NO -> DAY
+            else -> null
+        }
+
+    /**
+     * When Configuration has not updated yet but UiModeManager already holds
+     * hard YES/NO (common right after 设置→显示), follow the manager.
+     */
+    private fun uiManagerHardNightFraction(): Float? =
+        when (readUiModeManagerNight()) {
+            MODE_LIGHT -> DAY
+            MODE_DARK -> NIGHT
             else -> null
         }
 

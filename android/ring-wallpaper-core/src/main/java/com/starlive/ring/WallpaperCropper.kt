@@ -9,7 +9,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Crop rules (INTERACTION-1.0 / shared with StarLive + future Lyra):
+ * Crop rules shared with StarLive and Lyra handoff:
  * Strategy selection is [CropStrategy]; this class owns Bitmap decode / crop.
  */
 object WallpaperCropper {

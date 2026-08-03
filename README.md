@@ -1,69 +1,53 @@
 # 星澜 StarLive
 
-阿维塔车机 **星环屏空闲壁纸** 工具：免费开源、少量示范、自定义导入、私人定制另售。
+面向阿维塔车机的 **星环空闲壁纸** 工具。开源免费，支持内置壁纸、本地导入与主题兑换；私人定制另售。播放音乐时自动暂停星环占用；需要歌词与视觉特效时，可升级至 [Lyra](https://github.com/anpplex)。
 
-| 项 | 值 |
-|----|-----|
-| 中文名 | **星澜** |
-| 英文名 | **StarLive** |
-| 定位 | [Lyra](https://github.com/anpplex) 生态 **子项目 / 引流层** · 可 [丝滑升级到 Lyra](./docs/LYRA-UPGRADE.md) |
-| 仓库 | https://github.com/anpplex/StarLive |
-| 最新版本 | **0.1.24-cache** · [Releases](https://github.com/anpplex/StarLive/releases) |
-| 协议 | [Apache-2.0](./LICENSE) |
-| 文档 | [`docs/`](./docs/) |
-| 协作者 | [`AGENTS.md`](./AGENTS.md) |
-| Git 工作流 | [`docs/GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) |
+| 项目 | 说明 |
+|------|------|
+| 应用名称 | 星澜 / StarLive |
+| 包名 | `com.starlive.app` |
+| 最新版本 | [Releases](https://github.com/anpplex/StarLive/releases/latest) |
+| 许可证 | [Apache-2.0](./LICENSE) |
+| 源码 | https://github.com/anpplex/StarLive |
 
-## 产品一句话
+## 功能概览
 
-> 装上就能换星环空闲壁纸；播歌自动让出星环；车辆启动后按「空闲显示」尽力恢复。需要歌词特效时升级 **Lyra**。
+- 星环空闲壁纸（旁路自绘，非系统 WallpaperService）
+- 内置壁纸浏览与切换、导入裁切、本地图库
+- 播放音乐时自动让出星环；可跟随车机日夜模式
+- 主题兑换、版本检查、与 Lyra 的壁纸互通
 
-## 当前状态
-
-- ✅ 产品 / 交互 / 技术规格（见 `docs/`）
-- ✅ Android App：空闲壁纸、导入裁切、播歌让出、多图库、主题兑换、检查更新、`ring-wallpaper-core`
-- ✅ 冷启补偿：进程启动自动恢复（部分车机不投递 BOOT，见 [QA-MATRIX §B1](./docs/QA-MATRIX.md)）
-- ✅ 主题包兑换（LicenseHub）与打包 / 发版脚本
-- ✅ Lyra ContentProvider / Download 互通
-- ✅ CI：assembleDebug + unit tests（裁切 / 兑换 / PlaybackGate）
-- ✅ 远端日夜跟随（`ui_night_mode`）+ 星环羽化交叉淡入
-- ✅ 播歌让出过滤壁纸引擎假阳性（0.1.22）
-- ✅ 首页预览与星环同源烘焙 + 羽化缓存
-- ✅ 实车矩阵大部通过（[QA-MATRIX](./docs/QA-MATRIX.md)）；**M1–M3** 华为音乐已验；剩余 I1 文件管理器内完整点选 / R3–R4 Admin；0.1.22 已过滤 Wallpaper Engine 假让出
-
-## 快速开始
+## 构建与安装
 
 ```bash
-# Debug 构建
-cd android && ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
-
-# 单元测试
+cd android
+./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
 ./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
 
-# 车机装机（华为 / 阿维塔旁路）
+# 阿维塔 / 华为车机
 ../scripts/install-starlive-car.sh <SERIAL>
-
-# 签名 Release（需 android/keystore.properties）
-../scripts/build-release.sh
 ```
 
-装机与权限：[docs/INSTALL.md](./docs/INSTALL.md)
+装机步骤、签名与权限说明见 [docs/INSTALL.md](./docs/INSTALL.md)。
 
-## 文档入口
+## 文档
 
-| 文档 | 说明 |
+| 文档 | 内容 |
 |------|------|
-| [docs/README.md](./docs/README.md) | 文档索引 |
-| [INSTALL](./docs/INSTALL.md) | 装机 · 签名 · 权限 |
-| [QA-MATRIX](./docs/QA-MATRIX.md) | 验收矩阵 |
-| [CUSTOM-SOP](./docs/CUSTOM-SOP.md) | 定制履约 |
-| [LYRA-UPGRADE](./docs/LYRA-UPGRADE.md) | 升级 Lyra 契约 |
-| [THEME-PACK](./docs/THEME-PACK.md) | 主题包格式 |
-| [RING-WALLPAPER-CORE](./docs/RING-WALLPAPER-CORE.md) | 共享几何模块 |
+| [docs/INSTALL.md](./docs/INSTALL.md) | 构建、签名、车机安装 |
+| [docs/PRIVACY.md](./docs/PRIVACY.md) | 隐私与权限 |
+| [docs/PRODUCT_BOUNDARIES.md](./docs/PRODUCT_BOUNDARIES.md) | 能力边界 |
+| [docs/LYRA-UPGRADE.md](./docs/LYRA-UPGRADE.md) | 与 Lyra 的互通约定 |
+| [docs/THEME-PACK.md](./docs/THEME-PACK.md) | 主题包格式 |
+| [docs/RING-WALLPAPER-CORE.md](./docs/RING-WALLPAPER-CORE.md) | 几何与裁切模块 |
+| [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md) | 私人定制履约 |
+| [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
+
+索引：[docs/README.md](./docs/README.md)
 
 ## 免责声明
 
-第三方工具，**与阿维塔 / 华为官方无关**。请在停车时设置壁纸。系统升级可能导致功能变化或失效。旁路自绘星环，非系统 WallpaperService。
+本软件为第三方工具，与阿维塔、华为官方无关联。请在车辆静止时设置壁纸。系统升级可能导致功能变化或失效。
 
 ## 许可
 

@@ -22,7 +22,7 @@ class CustomActivity : AppCompatActivity() {
         }
         col.addView(UiKit.title(this, "私人定制"))
         col.addView(
-            UiKit.caption(this, "专属星环壁纸 · 不进公开列表")
+            UiKit.caption(this, "专属星环壁纸，不进入公开主题列表")
                 .also { it.setPadding(0, dp(6), 0, dp(12)) },
         )
 
@@ -30,12 +30,11 @@ class CustomActivity : AppCompatActivity() {
         card.addView(
             UiKit.body(
                 this,
-                "【你会得到】\n" +
-                    "· 深色 + 浅色各一张（2990×284，浅色可选）\n" +
+                "交付内容\n" +
+                    "· 深色与浅色各一张（2990×284，浅色可选）\n" +
                     "· 适配左侧软边与表盘安全区\n" +
-                    "· 兑换码 1 个（App 内「兑换主题」，一码一设备）\n" +
-                    "· 或直发 jpg + 导入说明\n\n" +
-                    "【价格】\n" +
+                    "· 兑换码 1 个，或直发图片与导入说明\n\n" +
+                    "参考价格\n" +
                     "标准 ¥39 · 高级 ¥99（含 1 次修改）\n\n" +
                     "定制图同时适用于星澜与 Lyra。",
             ),
@@ -53,20 +52,22 @@ class CustomActivity : AppCompatActivity() {
         }
         full("复制微信号", primary = true) {
             if (ContactConfig.isPlaceholder(wechat)) {
-                Toast.makeText(this, "请先在 assets/contact/wechat.txt 填写微信号", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "微信号未配置，请联系发布方", Toast.LENGTH_LONG).show()
                 return@full
             }
             copy(wechat)
             Toast.makeText(this, "已复制微信号", Toast.LENGTH_SHORT).show()
         }
-        full("复制规格发给设计师") {
+        full("复制规格说明") {
             copy(SPEC_TEMPLATE)
-            Toast.makeText(this, "已复制规格模板", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "已复制规格说明", Toast.LENGTH_SHORT).show()
         }
-        col.addView(
-            UiKit.caption(this, "当前配置微信：$wechat")
-                .also { it.setPadding(0, dp(12), 0, 0) },
-        )
+        if (!ContactConfig.isPlaceholder(wechat)) {
+            col.addView(
+                UiKit.caption(this, "微信号：$wechat")
+                    .also { it.setPadding(0, dp(12), 0, 0) },
+            )
+        }
         col.addView(
             UiKit.ghostButton(this, "关闭") { finish() }.also {
                 it.layoutParams = LinearLayout.LayoutParams(
@@ -94,8 +95,8 @@ class CustomActivity : AppCompatActivity() {
             """
             【星澜定制】
             车型：阿维塔
-            规格：2990×284（星环壁纸带）+ 深浅双套
-            表盘保留：左侧约 1042px 不放关键内容
+            规格：2990×284（星环壁纸带），深色/浅色双套
+            表盘区：左侧约 1042px 不放置关键内容
             需求：
             素材：
             """.trimIndent()

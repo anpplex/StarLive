@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.starlive.app.R
 import com.starlive.app.StarLiveApp
 import com.starlive.app.runtime.PendingApplyStore
 import com.starlive.app.ui.UiTokens.applyRoundedBg
@@ -36,7 +37,7 @@ class ImportConfirmActivity : AppCompatActivity() {
         }
         root.addView(UiKit.title(this, "确认壁纸"))
         root.addView(
-            UiKit.caption(this, "预览左侧为表盘保留区 · 确认后写入图库并尝试上屏")
+            UiKit.caption(this, "左侧为表盘保留区，请勿放置关键内容")
                 .also { it.setPadding(0, dp(6), 0, dp(12)) },
         )
 
@@ -96,7 +97,7 @@ class ImportConfirmActivity : AppCompatActivity() {
             },
         )
         row.addView(
-            UiKit.primaryButton(this, "应用上屏") { commitAndApply() },
+            UiKit.primaryButton(this, getString(R.string.btn_apply)) { commitAndApply() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f),
         )
         root.addView(row)
@@ -112,8 +113,7 @@ class ImportConfirmActivity : AppCompatActivity() {
         cropped = result.bitmap
         sourceLabel = intent.getStringExtra(EXTRA_LABEL) ?: "导入"
         preview.setImageBitmap(result.bitmap)
-        info.text =
-            "原图 ${result.sourceW}×${result.sourceH}\n${result.strategyLabelZh}\n左侧表盘区不放贴图 · 点应用写入图库"
+        info.text = "原图 ${result.sourceW}×${result.sourceH}\n${result.strategyLabelZh}"
     }
 
     private fun loadCrop(): WallpaperCropper.Result? {
@@ -144,7 +144,7 @@ class ImportConfirmActivity : AppCompatActivity() {
         }
         Toast.makeText(
             this,
-            if (ok) "壁纸已应用" else "已保存 · 若未上屏请检查星环 Display",
+            if (ok) getString(R.string.toast_applied) else "已保存到图库。若未显示，请再次点「应用到星环」",
             Toast.LENGTH_SHORT,
         ).show()
         setResult(RESULT_OK)

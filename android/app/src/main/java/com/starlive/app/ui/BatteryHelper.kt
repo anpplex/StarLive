@@ -33,7 +33,7 @@ object BatteryHelper {
                 },
             )
         }.onFailure {
-            Toast.makeText(context, "请在系统设置中允许星澜自启动/忽略电池优化", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "请在系统设置中允许星澜自启动，并忽略电池优化", Toast.LENGTH_LONG).show()
         }
     }
 

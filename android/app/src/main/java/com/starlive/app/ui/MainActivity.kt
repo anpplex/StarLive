@@ -1,5 +1,8 @@
 package com.starlive.app.ui
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,7 +16,9 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.view.animation.PathInterpolator
 import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -24,7 +29,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.starlive.app.BuildConfig
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
 import com.starlive.app.display.ClusterApplyMessages
@@ -36,7 +40,6 @@ import com.starlive.app.wallpaper.WallpaperLibrary
 import com.starlive.app.wallpaper.WallpaperRepository
 import com.starlive.ring.StripGeometry
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /**
  * Home: swipe gallery in hero + one primary apply. 导入/更多 on top bar.
@@ -56,10 +59,23 @@ class MainActivity : AppCompatActivity() {
     private var galleryBase: List<GalleryItem> = emptyList()
     /** [galleryBase] × 3 for seamless left/right loop. */
     private var galleryLoop: List<GalleryItem> = emptyList()
-    private var snapPosted = false
-    private var touchStartX = 0f
+    /** Page index at gesture start — settle is always start ± 1 (never skip). */
+    private var gestureStartIndex: Int = 0
+    private var gestureStartX: Float = 0f
+    private var lastTouchX: Float = 0f
+    private var pageAnimator: ValueAnimator? = null
+    private var velocityTracker: VelocityTracker? = null
+    private var galleryDragging = false
 
     private val orch get() = (application as StarLiveApp).orchestrator
+
+    companion object {
+        /** px/s — car HU flings are hot; keep threshold firm so a nudge doesn't page. */
+        private const val FLING_VX = 700f
+        /** Fraction of page width to commit next/prev without fling. */
+        private const val PAGE_COMMIT_FRAC = 0.15f
+        private val PAGE_EASE = PathInterpolator(0.22f, 1f, 0.36f, 1f)
+    }
 
     private var nightRowHost: LinearLayout? = null
 
@@ -123,7 +139,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(24), dp(16), dp(24), dp(24))
         }
 
-        // 标题栏（导入 | 更多）→ 顶部横滑预览 → 应用上屏
+        // 标题栏（导入 | 更多）→ 顶部横滑预览 → 应用到星环
         root.addView(buildTopBar())
         root.addView(buildHeroCard())
         root.addView(buildPrimaryApply())
@@ -161,14 +177,7 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         titles.addView(UiKit.title(this, getString(R.string.app_name)))
-        titles.addView(
-            TextView(this).apply {
-                text = "StarLive · ${BuildConfig.VERSION_NAME}"
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                setPadding(0, dp(2), 0, 0)
-            },
-        )
+        // Version lives in 关于 — keep home chrome clean.
         top.addView(titles)
         statusTv = UiKit.statusPill(this)
         top.addView(statusTv)
@@ -216,32 +225,86 @@ class MainActivity : AppCompatActivity() {
         }
         galleryScroll = object : HorizontalScrollView(this) {
             override fun fling(velocityX: Int) {
-                // Page-sized fling so left/right both land on a neighbor (not free-scroll chaos).
+                // Free fling skips pages; paging is settled in onTouchEvent.
+            }
+
+            override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+                // Always own horizontal gallery gestures (both directions).
+                when (ev.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        cancelPageAnim()
+                        galleryDragging = false
+                        velocityTracker?.recycle()
+                        velocityTracker = VelocityTracker.obtain().also { it.addMovement(ev) }
+                        gestureStartX = ev.x
+                        lastTouchX = ev.x
+                        // Prefer index from scroll so reverse/forward both see true start page.
+                        gestureStartIndex = pageIndexFromScroll(scrollX)
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        velocityTracker?.addMovement(ev)
+                        if (abs(ev.x - gestureStartX) > dp(6)) {
+                            galleryDragging = true
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                            return true
+                        }
+                    }
+                }
+                return super.onInterceptTouchEvent(ev) || galleryDragging
+            }
+
+            override fun onTouchEvent(ev: MotionEvent): Boolean {
                 if (galleryPageW <= 0 || galleryLoop.isEmpty()) {
-                    super.fling(velocityX)
-                    return
+                    return super.onTouchEvent(ev)
                 }
-                val dir = when {
-                    velocityX > 200 -> -1 // fling right → previous page
-                    velocityX < -200 -> 1 // fling left → next page
-                    else -> 0
+                when (ev.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        cancelPageAnim()
+                        galleryDragging = true
+                        velocityTracker?.recycle()
+                        velocityTracker = VelocityTracker.obtain().also { it.addMovement(ev) }
+                        gestureStartX = ev.x
+                        lastTouchX = ev.x
+                        gestureStartIndex = pageIndexFromScroll(scrollX)
+                        // Lock to page origin so drag delta is clean both ways.
+                        scrollTo(gestureStartIndex * galleryPageW, 0)
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        velocityTracker?.addMovement(ev)
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                        // Finger left → content left → next; finger right → previous.
+                        val dx = lastTouchX - ev.x
+                        lastTouchX = ev.x
+                        val maxScroll = (galleryLoop.size - 1) * galleryPageW
+                        val next = (scrollX + dx).toInt().coerceIn(0, maxScroll.coerceAtLeast(0))
+                        scrollTo(next, 0)
+                        updatePageIndicator(pageIndexFromScroll(next))
+                        return true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        velocityTracker?.addMovement(ev)
+                        velocityTracker?.computeCurrentVelocity(1000)
+                        val vx = velocityTracker?.xVelocity ?: 0f
+                        velocityTracker?.recycle()
+                        velocityTracker = null
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        galleryDragging = false
+                        settleGalleryFromGesture(fingerDx = ev.x - gestureStartX, velocityX = vx)
+                        return true
+                    }
                 }
-                if (dir == 0) {
-                    super.fling(velocityX)
-                    postSnapGallery()
-                    return
-                }
-                val cur = ((scrollX + galleryPageW / 2f) / galleryPageW).roundToInt()
-                    .coerceIn(0, galleryLoop.lastIndex)
-                val target = (cur + dir).coerceIn(0, galleryLoop.lastIndex)
-                smoothScrollTo(target * galleryPageW, 0)
-                postDelayed({ snapGallery() }, 280)
+                return true
             }
         }.apply {
             isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_ALWAYS
+            overScrollMode = View.OVER_SCROLL_NEVER
             isFillViewport = false
             clipToOutline = true
+            isClickable = true
+            isFocusable = true
             applyRoundedBg(UiTokens.heroBg, 14f, UiTokens.stroke)
             outlineProvider = object : android.view.ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: android.graphics.Outline) {
@@ -254,33 +317,6 @@ class MainActivity : AppCompatActivity() {
                 galleryHeroH,
             )
             addView(galleryRow)
-            setOnTouchListener { v, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        touchStartX = event.x
-                        // Keep parent vertical ScrollView from stealing horizontal swipes.
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (abs(event.x - touchStartX) > dp(8)) {
-                            v.parent?.requestDisallowInterceptTouchEvent(true)
-                        }
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(false)
-                        postSnapGallery()
-                    }
-                }
-                false
-            }
-            setOnScrollChangeListener { _, scrollX, _, _, _ ->
-                if (galleryPageW > 0 && galleryLoop.isNotEmpty()) {
-                    val page = ((scrollX + galleryPageW / 2f) / galleryPageW)
-                        .toInt()
-                        .coerceIn(0, galleryLoop.lastIndex)
-                    updatePageIndicator(page)
-                }
-            }
         }
         card.addView(galleryScroll)
 
@@ -313,7 +349,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildPrimaryApply(): Button =
-        UiKit.primaryButton(this, "应用上屏") { applyWallpaper() }.also {
+        UiKit.primaryButton(this, getString(R.string.btn_apply)) { applyWallpaper() }.also {
             it.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -339,6 +375,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun rebuildGallery(keepPage: Boolean) {
         if (!::galleryRow.isInitialized) return
+        cancelPageAnim()
         val prevKey = galleryLoop.getOrNull(galleryIndex)?.key
             ?: galleryBase.getOrNull(realIndexOf(galleryIndex))?.key
         galleryBase = buildGalleryList()
@@ -376,8 +413,8 @@ class MainActivity : AppCompatActivity() {
             }
             if (galleryBase.isEmpty()) {
                 galleryIndex = 0
-                pageIndicator.text = "暂无壁纸 · 点右上角导入"
-                sourceTv.text = "—"
+                pageIndicator.text = "暂无壁纸"
+                sourceTv.text = "点右上角导入"
                 return@post
             }
             val n = galleryBase.size
@@ -394,8 +431,9 @@ class MainActivity : AppCompatActivity() {
                 }.takeIf { it >= 0 } ?: 0
             }
             galleryIndex = n + real.coerceIn(0, n - 1)
+            gestureStartIndex = galleryIndex
             galleryScroll.scrollTo(galleryIndex * galleryPageW, 0)
-            applyGallerySelection(galleryIndex, toast = false, recenter = false)
+            applyGallerySelection(galleryIndex, recenter = false)
         }
     }
 
@@ -440,51 +478,95 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun postSnapGallery() {
-        if (snapPosted) return
-        snapPosted = true
-        galleryScroll.post {
-            snapPosted = false
-            snapGallery()
-        }
+    private fun pageIndexFromScroll(scrollX: Int): Int {
+        if (galleryPageW <= 0 || galleryLoop.isEmpty()) return 0
+        return ((scrollX + galleryPageW / 2f) / galleryPageW)
+            .toInt()
+            .coerceIn(0, galleryLoop.lastIndex)
     }
 
-    private fun snapGallery() {
+    /**
+     * One gesture → at most one neighbor page.
+     * Direction from **finger** delta (not free-scroll midpoint):
+     * - finger left / fling left  → next (1→2→3→4→1)
+     * - finger right / fling right → prev (1→4→3→2→1)
+     */
+    private fun settleGalleryFromGesture(fingerDx: Float, velocityX: Float) {
         if (galleryPageW <= 0 || galleryLoop.isEmpty() || galleryBase.isEmpty()) return
-        val page = ((galleryScroll.scrollX + galleryPageW / 2f) / galleryPageW)
-            .roundToInt()
-            .coerceIn(0, galleryLoop.lastIndex)
-        galleryScroll.smoothScrollTo(page * galleryPageW, 0)
-        if (page != galleryIndex) {
-            applyGallerySelection(page, toast = true, recenter = true)
-        } else {
-            // Still recenter if sitting on edge copies.
-            recenterLoopIfNeeded(page)
-            updatePageIndicator(page)
+        val commitPx = galleryPageW * PAGE_COMMIT_FRAC
+        // fingerDx: + = finger moved right → previous page
+        // velocityX: + = fling right → previous page
+        val dir = when {
+            velocityX < -FLING_VX -> 1
+            velocityX > FLING_VX -> -1
+            fingerDx < -commitPx -> 1
+            fingerDx > commitPx -> -1
+            else -> 0
+        }
+        // Stay in middle copy: start is always ~[n, 2n); ±1 never hits hard edge.
+        val start = gestureStartIndex.coerceIn(0, galleryLoop.lastIndex)
+        val target = (start + dir).coerceIn(0, galleryLoop.lastIndex)
+        animateToPage(target)
+    }
+
+    private fun cancelPageAnim() {
+        pageAnimator?.cancel()
+        pageAnimator = null
+    }
+
+    /** Damped page settle (ease-out). Duration scales lightly with distance. */
+    private fun animateToPage(targetIndex: Int) {
+        if (!::galleryScroll.isInitialized || galleryPageW <= 0) return
+        val safeTarget = targetIndex.coerceIn(0, galleryLoop.lastIndex)
+        cancelPageAnim()
+        val from = galleryScroll.scrollX
+        val to = safeTarget * galleryPageW
+        if (abs(from - to) <= 1) {
+            galleryScroll.scrollTo(to, 0)
+            applyGallerySelection(safeTarget, recenter = true)
+            return
+        }
+        val dist = abs(to - from).toFloat()
+        val duration = (260L + (dist * 0.12f).toLong()).coerceIn(280L, 480L)
+        pageAnimator = ValueAnimator.ofInt(from, to).apply {
+            this.duration = duration
+            interpolator = PAGE_EASE
+            addUpdateListener { anim ->
+                val x = anim.animatedValue as Int
+                galleryScroll.scrollTo(x, 0)
+                updatePageIndicator(pageIndexFromScroll(x))
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    pageAnimator = null
+                    applyGallerySelection(safeTarget, recenter = true)
+                }
+
+                override fun onAnimationCancel(animation: Animator) {
+                    pageAnimator = null
+                }
+            })
+            start()
         }
     }
 
     /**
-     * Keep scroll position in the middle third of the tripled list so both
-     * directions stay open (infinite loop without a dead end).
+     * Always park in the **middle** third of the tripled list so both
+     * previous and next gestures stay open (infinite L/R without a wall).
      */
-    private fun recenterLoopIfNeeded(loopIndex: Int) {
+    private fun parkInMiddleCopy(loopIndex: Int) {
         val n = galleryBase.size
-        if (n <= 1 || galleryPageW <= 0) return
+        if (n <= 0 || galleryPageW <= 0) return
         val real = realIndexOf(loopIndex)
-        val mid = n + real
-        // Near first or third copy → jump to middle copy (no animation).
-        if (loopIndex < n || loopIndex >= n * 2) {
-            galleryIndex = mid
-            galleryScroll.post {
-                galleryScroll.scrollTo(mid * galleryPageW, 0)
-            }
-        } else {
-            galleryIndex = loopIndex
+        val mid = if (n == 1) 0 else n + real
+        galleryIndex = mid
+        gestureStartIndex = mid
+        if (galleryScroll.scrollX != mid * galleryPageW) {
+            galleryScroll.scrollTo(mid * galleryPageW, 0)
         }
     }
 
-    private fun applyGallerySelection(page: Int, toast: Boolean, recenter: Boolean) {
+    private fun applyGallerySelection(page: Int, recenter: Boolean) {
         if (galleryLoop.isEmpty() || galleryBase.isEmpty()) return
         val loopIdx = page.coerceIn(0, galleryLoop.lastIndex)
         val item = galleryLoop[loopIdx]
@@ -493,22 +575,20 @@ class MainActivity : AppCompatActivity() {
             item.libId != null -> WallpaperRepository.applyLibraryItem(this, item.libId)
         }
         if (recenter) {
-            recenterLoopIfNeeded(loopIdx)
+            parkInMiddleCopy(loopIdx)
         } else {
             galleryIndex = loopIdx
+            gestureStartIndex = loopIdx
         }
         updatePageIndicator(galleryIndex)
         refreshUi()
-        if (toast) {
-            Toast.makeText(this, item.label, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun updatePageIndicator(page: Int) {
         if (!::pageIndicator.isInitialized || galleryBase.isEmpty()) return
         val real = realIndexOf(page)
         val item = galleryBase[real]
-        pageIndicator.text = "左右滑动 · ${real + 1} / ${galleryBase.size} · 循环"
+        pageIndicator.text = "${real + 1} / ${galleryBase.size}"
         if (::sourceTv.isInitialized) {
             sourceTv.text = item.label
         }
@@ -543,24 +623,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMoreMenu() {
         val items = arrayOf(
+            "显示设置",
+            "恢复内置壁纸",
             "兑换主题",
             "私人定制",
-            "显示与恢复…",
-            "恢复示范",
-            "规格说明",
-            "升级到 Lyra",
+            "升级 Lyra",
+            "壁纸规格",
             "关于",
         )
         AlertDialog.Builder(this)
             .setTitle("更多")
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> startActivity(Intent(this, RedeemActivity::class.java))
-                    1 -> startActivity(Intent(this, CustomActivity::class.java))
-                    2 -> showSettingsDialog()
-                    3 -> confirmRestoreDemo()
-                    4 -> startActivity(Intent(this, SpecActivity::class.java))
-                    5 -> startActivity(Intent(this, UpgradeActivity::class.java))
+                    0 -> showSettingsDialog()
+                    1 -> confirmRestoreDemo()
+                    2 -> startActivity(Intent(this, RedeemActivity::class.java))
+                    3 -> startActivity(Intent(this, CustomActivity::class.java))
+                    4 -> startActivity(Intent(this, UpgradeActivity::class.java))
+                    5 -> startActivity(Intent(this, SpecActivity::class.java))
                     6 -> startActivity(Intent(this, AboutActivity::class.java))
                 }
             }
@@ -576,7 +656,7 @@ class MainActivity : AppCompatActivity() {
         col.addView(buildSettingsCard())
         col.addView(
             TextView(this).apply {
-                text = "日夜"
+                text = "外观"
                 setTextColor(UiTokens.textMuted)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -592,9 +672,9 @@ class MainActivity : AppCompatActivity() {
             )
         }
         AlertDialog.Builder(this)
-            .setTitle("显示与恢复")
+            .setTitle("显示设置")
             .setView(scroll)
-            .setPositiveButton("完成", null)
+            .setPositiveButton(android.R.string.ok, null)
             .show()
     }
 
@@ -603,15 +683,15 @@ class MainActivity : AppCompatActivity() {
         card.addView(
             UiKit.settingRow(
                 this,
-                title = "空闲显示壁纸",
-                subtitle = "关则让出原厂星环",
+                title = "星环壁纸",
+                subtitle = "关闭后恢复原厂星环显示",
                 initial = WallpaperRepository.idlePrefer(this),
             ) { checked ->
                 orch.setIdlePrefer(checked)
                 refreshUi()
                 Toast.makeText(
                     this,
-                    if (checked) "已开启空闲显示" else "已让出原厂星环",
+                    if (checked) "已开启星环壁纸" else "已恢复原厂显示",
                     Toast.LENGTH_SHORT,
                 ).show()
             },
@@ -620,8 +700,8 @@ class MainActivity : AppCompatActivity() {
         card.addView(
             UiKit.settingRow(
                 this,
-                title = "已装 Lyra 时让路",
-                subtitle = "双装时不抢星环",
+                title = "Lyra 优先",
+                subtitle = "已安装 Lyra 时由 Lyra 占用星环",
                 initial = WallpaperRepository.yieldWhenLyraInstalled(this),
             ) { checked ->
                 WallpaperRepository.setYieldWhenLyraInstalled(this, checked)
@@ -629,7 +709,7 @@ class MainActivity : AppCompatActivity() {
                 refreshUi()
                 Toast.makeText(
                     this,
-                    if (checked) "检测到 Lyra 时星澜不占星环" else "即使已装 Lyra 也可上壁纸",
+                    if (checked) "已开启 Lyra 优先" else "已关闭 Lyra 优先",
                     Toast.LENGTH_SHORT,
                 ).show()
             },
@@ -638,8 +718,8 @@ class MainActivity : AppCompatActivity() {
         card.addView(
             UiKit.settingRow(
                 this,
-                title = "示范轮播",
-                subtitle = "仅示范图轮换",
+                title = "内置轮播",
+                subtitle = "在内置壁纸之间自动切换",
                 initial = WallpaperRepository.isCarouselEnabled(this),
             ) { checked ->
                 WallpaperRepository.setCarouselEnabled(this, checked)
@@ -698,9 +778,8 @@ class MainActivity : AppCompatActivity() {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         nightRowHost = row
         val current = WallpaperRepository.nightMode(this)
-        // 「自动」跟随车机显示模式（浅色1/深色2/自适应9），与 Lyra 远端日夜同源。
-        // Short labels for dialog; full effective day/night still applied in backend.
-        listOf("auto" to "自动", "dark" to "深色", "light" to "浅色").forEachIndexed { i, (mode, label) ->
+        // 跟随系统 = 车机显示模式（浅色 / 深色 / 自适应）。
+        listOf("auto" to "跟随系统", "dark" to "深色", "light" to "浅色").forEachIndexed { i, (mode, label) ->
             row.addView(
                 UiKit.chip(this, label, selected = current == mode) {
                     WallpaperRepository.setNightMode(this, mode)
@@ -887,29 +966,29 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.hero_yield_playing),
             )
             !idle -> styleStatus(
-                "已让出原厂",
+                getString(R.string.status_closed),
                 UiTokens.textMuted,
-                "已让出原厂星环 · 开「空闲显示」后可再上屏",
+                getString(R.string.hero_closed),
             )
             alive -> styleStatus(
-                "已上屏",
+                getString(R.string.status_showing),
                 UiTokens.success,
-                "星环与预览一致 · 点预览或「应用上屏」可再同步",
+                "",
             )
             launching -> styleStatus(
-                "上屏中…",
+                getString(R.string.status_launching),
                 UiTokens.info,
-                "正在打开星环 · 片刻后自动同步状态",
+                "",
             )
             orch.lastError == "launch-failed" -> styleStatus(
-                "无法上屏",
+                getString(R.string.status_fail),
                 UiTokens.danger,
                 ClusterApplyMessages.noCluster(orch.display.listDisplaysForProbe()),
             )
             else -> styleStatus(
-                "未上屏",
+                getString(R.string.status_hidden),
                 UiTokens.warning,
-                "已选「${WallpaperRepository.labelForActive(this)}」· 点「应用上屏」同步到星环",
+                getString(R.string.hero_hidden),
             )
         }
     }
@@ -917,6 +996,12 @@ class MainActivity : AppCompatActivity() {
     private fun styleStatus(label: String, color: Int, sub: String) {
         statusTv.text = label
         statusTv.setTextColor(color)
-        heroSub.text = sub
+        if (sub.isBlank()) {
+            heroSub.visibility = View.GONE
+            heroSub.text = ""
+        } else {
+            heroSub.visibility = View.VISIBLE
+            heroSub.text = sub
+        }
     }
 }

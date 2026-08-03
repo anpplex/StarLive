@@ -71,7 +71,8 @@ class WallpaperCarousel(private val app: Application) {
         val orch = (app as? StarLiveApp)?.orchestrator ?: return false
         if (orch.isEffectivelyPlaying()) return false
         if (orch.isHandedOffToLyra()) return false
-        if (WallpaperRepository.activeId(app) == "custom") return false
+        val active = WallpaperRepository.activeId(app)
+        if (active == "custom" || active.startsWith("lib:")) return false
         return WallpaperRepository.demos(app).size >= 2
     }
 

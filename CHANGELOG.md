@@ -6,7 +6,14 @@
 
 ### Planned
 
-- ContentProvider 自动迁移、多图本地库
+- Lyra 侧 ContentProvider 一键导入、主题包兑换码
+
+## [0.1.4-lib] — 2026-08-03
+
+### Added
+
+- 本地导入多图库（最多 24，长按删除）
+- ContentProvider `content://com.starlive.app.handoff/active|meta` 供 Lyra 后续对接
 
 ## [0.1.3-demo] — 2026-08-03
 

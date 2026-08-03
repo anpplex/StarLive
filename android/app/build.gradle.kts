@@ -11,8 +11,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.1.3-demo"
+        versionCode = 6
+        versionName = "0.1.4-lib"
     }
 
     buildTypes {

@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusTv: TextView
     private lateinit var sourceTv: TextView
     private lateinit var heroSub: TextView
+    private lateinit var libraryHost: LinearLayout
 
     private val orch get() = (application as StarLiveApp).orchestrator
 
@@ -203,6 +204,19 @@ class MainActivity : AppCompatActivity() {
         }
         chipScroll.addView(chips)
         root.addView(chipScroll)
+
+        // Local library
+        root.addView(
+            TextView(this).apply {
+                text = "已导入（长按删除）"
+                setTextColor(Color.parseColor("#8B9BB4"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setPadding(0, dp(12), 0, dp(6))
+            },
+        )
+        libraryHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(libraryHost)
+        rebuildLibraryRail()
 
         val sourceRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -424,8 +438,68 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         orch.refreshLyraHandoff("main-resume")
+        rebuildLibraryRail()
         refreshUi()
         maybeSoftHints()
+    }
+
+    private fun rebuildLibraryRail() {
+        if (!::libraryHost.isInitialized) return
+        libraryHost.removeAllViews()
+        val dens = resources.displayMetrics.density
+        fun dp(v: Int) = (v * dens).toInt()
+        val items = WallpaperRepository.libraryItems(this)
+        if (items.isEmpty()) {
+            libraryHost.addView(
+                TextView(this).apply {
+                    text = "导入后会出现在这里，最多 24 张"
+                    setTextColor(Color.parseColor("#5A6578"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                },
+            )
+            return
+        }
+        val scroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        items.forEach { item ->
+            row.addView(
+                Button(this).apply {
+                    text = item.label.take(10)
+                    isAllCaps = false
+                    setBackgroundColor(Color.parseColor("#1E2A3A"))
+                    setTextColor(Color.parseColor("#D0D8E8"))
+                    setOnClickListener {
+                        if (WallpaperRepository.applyLibraryItem(this@MainActivity, item.id)) {
+                            refreshUi()
+                            Toast.makeText(
+                                this@MainActivity,
+                                "已选 ${item.label} · 点应用同步到星环",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                    setOnLongClickListener {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("删除导入？")
+                            .setMessage(item.label)
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .setPositiveButton("删除") { _, _ ->
+                                WallpaperRepository.deleteLibraryItem(this@MainActivity, item.id)
+                                rebuildLibraryRail()
+                                refreshUi()
+                            }
+                            .show()
+                        true
+                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        dp(40),
+                    ).apply { marginEnd = dp(8) }
+                },
+            )
+        }
+        scroll.addView(row)
+        libraryHost.addView(scroll)
     }
 
     private fun maybeSoftHints() {

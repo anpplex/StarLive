@@ -5,4 +5,17 @@
     <string name="first_run_hint">点「应用当前」或点上方预览条，把示范壁纸打到星环</string>
     <string name="toast_applied">已应用到星环</string>
     <string name="toast_apply_fail">无法上屏 · 请确认星环 Display 可用</string>
+    <string name="import_sheet_title">导入壁纸</string>
+    <string name="import_from_picker">从相册/文件选择</string>
+    <string name="import_from_download">从 Download 导入</string>
+    <string name="import_filename_help">查看文件名说明</string>
+    <string name="import_filename_detail">请将图片放到 Download，文件名任选其一：\n\n• starlive_wallpaper.jpg / .png\n• lyra_wallpaper.jpg / .png（兼容 Lyra）\n• cluster_wallpaper.jpg\n\n推荐尺寸 2990×284。全宽 4032 条带图将按右带裁切。</string>
+    <string name="no_download_title">未找到壁纸文件</string>
+    <string name="no_download_msg">请将图片放到 Download，命名为 starlive_wallpaper.jpg（或 lyra_wallpaper.jpg）。</string>
+    <string name="need_storage">需要存储权限以读取图片</string>
+    <string name="picker_unavailable">无图库选择器 · 请改用 Download 导入</string>
+    <string name="restore_title">恢复示范壁纸？</string>
+    <string name="restore_msg">将清除当前自定义图在星澜中的选用（Download 中的原文件不会删除）。</string>
+    <string name="restore_demo">恢复</string>
+    <string name="restore_done">已恢复示范 · 点应用同步到星环</string>
 </resources>

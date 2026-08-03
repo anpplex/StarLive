@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import com.starlive.app.display.StripGeometry
 import com.starlive.app.display.WallpaperEdgeSoftener
+import com.starlive.app.runtime.PendingApplyStore
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -22,8 +23,21 @@ object WallpaperRepository {
     private const val KEY_HAS_IMAGE = "has_image"
     private const val KEY_NIGHT = "night_mode" // auto|dark|light
     private const val KEY_HINT = "first_run_hint_shown"
+    private const val KEY_CUSTOM_LABEL = "custom_label"
     private const val FILE_ACTIVE = "active_wallpaper.jpg"
     private const val CATALOG = "wallpaper/catalog.json"
+
+    /** Download / Pictures scan order (Lyra-compatible names last for handoff). */
+    val DOWNLOAD_CANDIDATES = listOf(
+        "starlive_wallpaper.jpg",
+        "starlive_wallpaper.png",
+        "lyra_wallpaper.jpg",
+        "lyra_wallpaper.png",
+        "cluster_wallpaper.jpg",
+        "cluster_wallpaper.png",
+        "lyra_cluster_wallpaper.jpg",
+        "lyra_cluster_wallpaper.png",
+    )
 
     data class Demo(val id: String, val assetPath: String, val label: String)
 
@@ -90,8 +104,53 @@ object WallpaperRepository {
 
     fun labelForActive(context: Context): String {
         val id = activeId(context)
-        if (id == "custom") return "自定义"
+        if (id == "custom") {
+            val custom = prefs(context).getString(KEY_CUSTOM_LABEL, null)
+            return if (custom.isNullOrBlank()) "自定义" else "自定义 · $custom"
+        }
         return demos(context).firstOrNull { it.id == id }?.label ?: id
+    }
+
+    /** Persist cropped bitmap as active custom wallpaper. */
+    fun commitCropped(context: Context, bitmap: Bitmap, label: String = "导入"): Boolean {
+        return runCatching {
+            val app = context.applicationContext
+            FileOutputStream(activeFile(app)).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+            }
+            prefs(app).edit()
+                .putBoolean(KEY_HAS_IMAGE, true)
+                .putString(KEY_ACTIVE_ID, "custom")
+                .putString(KEY_CUSTOM_LABEL, label)
+                .apply()
+            true
+        }.onFailure { Log.w(TAG, "commitCropped failed", it) }.getOrDefault(false)
+    }
+
+    fun findDownloadCandidate(context: Context): File? {
+        val roots = listOfNotNull(
+            File("/sdcard/Download"),
+            File("/storage/emulated/0/Download"),
+            File("/sdcard/Pictures"),
+            File("/storage/emulated/0/Pictures"),
+            context.getExternalFilesDir(null),
+        )
+        for (root in roots) {
+            if (!root.isDirectory) continue
+            for (name in DOWNLOAD_CANDIDATES) {
+                val f = File(root, name)
+                if (f.isFile && f.length() > 32L) return f
+            }
+        }
+        return null
+    }
+
+    /** Restore first demo; clears custom selection + pending apply. */
+    fun restoreDemo(context: Context): Boolean {
+        PendingApplyStore.clear(context)
+        val first = demos(context).firstOrNull()?.id ?: "demo_minimal_dark"
+        prefs(context).edit().remove(KEY_CUSTOM_LABEL).apply()
+        return applyDemo(context, first)
     }
 
     fun decodeActiveForStrip(context: Context, nightish: Boolean): Bitmap? {

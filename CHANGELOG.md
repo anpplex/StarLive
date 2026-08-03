@@ -6,7 +6,15 @@
 
 ### Planned
 
-- 正式 demo 美化、日夜双图资源对、ContentProvider 迁移
+- ContentProvider 自动迁移、多图本地库
+
+## [0.1.2-p05] — 2026-08-03
+
+### Added
+
+- 三套示范主题深/浅双图（切换日夜自动换图）
+- 导出 handoff 同时写入 `Download/` 根目录（Lyra 默认可扫）
+- Lyra：Download 导入兼容 `starlive_wallpaper` 与 `Download/StarLive/`
 
 ## [0.1.1-p05] — 2026-08-03
 

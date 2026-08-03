@@ -21,7 +21,7 @@ object WallpaperRepository {
     private const val KEY_IDLE = "idle_prefer"
     private const val KEY_ACTIVE_ID = "active_id"
     private const val KEY_HAS_IMAGE = "has_image"
-    private const val KEY_NIGHT = "night_mode" // auto|dark|light
+    private const val KEY_NIGHT = "night_mode"
     private const val KEY_HINT = "first_run_hint_shown"
     private const val KEY_CUSTOM_LABEL = "custom_label"
     private const val KEY_CAROUSEL = "carousel_enabled"
@@ -35,7 +35,6 @@ object WallpaperRepository {
     const val CAROUSEL_MAX = 60
     const val CAROUSEL_DEFAULT = 5
 
-    /** Download / Pictures scan order (Lyra-compatible names last for handoff). */
     val DOWNLOAD_CANDIDATES = listOf(
         "starlive_wallpaper.jpg",
         "starlive_wallpaper.png",
@@ -47,7 +46,14 @@ object WallpaperRepository {
         "lyra_cluster_wallpaper.png",
     )
 
-    data class Demo(val id: String, val assetPath: String, val label: String)
+    data class Demo(
+        val id: String,
+        val label: String,
+        val darkAsset: String,
+        val lightAsset: String,
+    ) {
+        fun assetFor(nightish: Boolean): String = if (nightish) darkAsset else lightAsset
+    }
 
     fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -64,10 +70,23 @@ object WallpaperRepository {
 
     fun setNightMode(context: Context, mode: String) {
         prefs(context).edit().putString(KEY_NIGHT, mode).apply()
+        val id = activeId(context)
+        if (id != "custom") {
+            applyDemo(context, id)
+        }
     }
 
-    fun activeId(context: Context): String =
-        prefs(context).getString(KEY_ACTIVE_ID, "demo_minimal_dark") ?: "demo_minimal_dark"
+    fun activeId(context: Context): String {
+        val raw = prefs(context).getString(KEY_ACTIVE_ID, "minimal") ?: "minimal"
+        return migrateLegacyId(raw)
+    }
+
+    private fun migrateLegacyId(id: String): String = when (id) {
+        "demo_minimal_dark", "demo_minimal_light" -> "minimal"
+        "demo_atmosphere", "demo_atmosphere_dark", "demo_atmosphere_light" -> "atmosphere"
+        "demo_abstract", "demo_abstract_dark", "demo_abstract_light" -> "abstract"
+        else -> id
+    }
 
     fun firstRunHintShown(context: Context): Boolean =
         prefs(context).getBoolean(KEY_HINT, false)
@@ -93,7 +112,6 @@ object WallpaperRepository {
             .apply()
     }
 
-    /** When Lyra is installed, StarLive stops claiming the strip (P0.5). Default on. */
     fun yieldWhenLyraInstalled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_YIELD_LYRA, true)
 
@@ -115,7 +133,6 @@ object WallpaperRepository {
         prefs(context).edit().putBoolean(KEY_BATTERY_HINT, true).apply()
     }
 
-    /** Advance to next demo (skips custom). Returns new id or null. */
     fun advanceToNextDemo(context: Context): String? {
         val list = demos(context)
         if (list.size < 2) return null
@@ -146,17 +163,19 @@ object WallpaperRepository {
     }
 
     fun applyDemo(context: Context, id: String): Boolean {
-        val demo = demos(context).firstOrNull { it.id == id } ?: return false
+        val themeId = migrateLegacyId(id)
+        val demo = demos(context).firstOrNull { it.id == themeId } ?: return false
+        val asset = demo.assetFor(isNightish(context))
         return runCatching {
-            context.assets.open(demo.assetPath).use { input ->
+            context.assets.open(asset).use { input ->
                 FileOutputStream(activeFile(context)).use { out -> input.copyTo(out) }
             }
             prefs(context).edit()
                 .putBoolean(KEY_HAS_IMAGE, true)
-                .putString(KEY_ACTIVE_ID, id)
+                .putString(KEY_ACTIVE_ID, themeId)
                 .apply()
             true
-        }.onFailure { Log.w(TAG, "applyDemo failed $id", it) }.getOrDefault(false)
+        }.onFailure { Log.w(TAG, "applyDemo failed $themeId $asset", it) }.getOrDefault(false)
     }
 
     fun labelForActive(context: Context): String {
@@ -168,7 +187,6 @@ object WallpaperRepository {
         return demos(context).firstOrNull { it.id == id }?.label ?: id
     }
 
-    /** Persist cropped bitmap as active custom wallpaper. */
     fun commitCropped(context: Context, bitmap: Bitmap, label: String = "导入"): Boolean {
         return runCatching {
             val app = context.applicationContext
@@ -186,6 +204,8 @@ object WallpaperRepository {
 
     fun findDownloadCandidate(context: Context): File? {
         val roots = listOfNotNull(
+            File("/sdcard/Download/StarLive"),
+            File("/storage/emulated/0/Download/StarLive"),
             File("/sdcard/Download"),
             File("/storage/emulated/0/Download"),
             File("/sdcard/Pictures"),
@@ -202,12 +222,46 @@ object WallpaperRepository {
         return null
     }
 
-    /** Restore first demo; clears custom selection + pending apply. */
     fun restoreDemo(context: Context): Boolean {
         PendingApplyStore.clear(context)
-        val first = demos(context).firstOrNull()?.id ?: "demo_minimal_dark"
+        val first = demos(context).firstOrNull()?.id ?: "minimal"
         prefs(context).edit().remove(KEY_CUSTOM_LABEL).apply()
         return applyDemo(context, first)
+    }
+
+    fun exportHandoffFiles(context: Context, versionName: String): Boolean {
+        return try {
+            ensureSeeded(context)
+            val active = activeFile(context)
+            if (!active.isFile) return false
+            val starliveDir = File("/storage/emulated/0/Download/StarLive")
+            starliveDir.mkdirs()
+            val downloadRoot = File("/storage/emulated/0/Download")
+            downloadRoot.mkdirs()
+            active.copyTo(File(starliveDir, "active_wallpaper.jpg"), overwrite = true)
+            active.copyTo(File(starliveDir, "starlive_wallpaper.jpg"), overwrite = true)
+            active.copyTo(File(starliveDir, "lyra_wallpaper.jpg"), overwrite = true)
+            active.copyTo(File(downloadRoot, "starlive_wallpaper.jpg"), overwrite = true)
+            active.copyTo(File(downloadRoot, "lyra_wallpaper.jpg"), overwrite = true)
+            val json = buildString {
+                append("{\n")
+                append("  \"format\": \"starlive-handoff/v1\",\n")
+                append("  \"activeId\": \"${activeId(context)}\",\n")
+                append("  \"idlePrefer\": ${idlePrefer(context)},\n")
+                append("  \"nightMode\": \"${nightMode(context)}\",\n")
+                append("  \"starliveVersion\": \"$versionName\",\n")
+                append("  \"files\": {\n")
+                append("    \"active\": \"active_wallpaper.jpg\",\n")
+                append("    \"lyra_wallpaper\": \"lyra_wallpaper.jpg\"\n")
+                append("  }\n")
+                append("}\n")
+            }
+            File(starliveDir, "handoff.json").writeText(json)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "exportHandoff failed", e)
+            false
+        }
     }
 
     fun decodeActiveForStrip(context: Context, nightish: Boolean): Bitmap? {
@@ -243,24 +297,45 @@ object WallpaperRepository {
     }
 
     private fun loadCatalog(context: Context): List<Demo> {
-        return runCatching {
+        return try {
             val json = context.assets.open(CATALOG).bufferedReader().use { it.readText() }
             val arr = JSONObject(json).getJSONArray("wallpapers")
             buildList {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
-                    add(
-                        Demo(
-                            id = o.getString("id"),
-                            assetPath = "wallpaper/${o.getString("file")}",
-                            label = o.optString("label", o.getString("id")),
-                        ),
-                    )
+                    val id = o.getString("id")
+                    if (o.has("dark") && o.has("light")) {
+                        add(
+                            Demo(
+                                id = id,
+                                label = o.optString("label", id),
+                                darkAsset = "wallpaper/${o.getString("dark")}",
+                                lightAsset = "wallpaper/${o.getString("light")}",
+                            ),
+                        )
+                    } else {
+                        val file = o.getString("file")
+                        add(
+                            Demo(
+                                id = id,
+                                label = o.optString("label", id),
+                                darkAsset = "wallpaper/$file",
+                                lightAsset = "wallpaper/$file",
+                            ),
+                        )
+                    }
                 }
             }
-        }.onFailure { Log.w(TAG, "catalog load failed", it) }
-            .getOrElse {
-                listOf(Demo("demo_minimal_dark", "wallpaper/demo_minimal_dark.jpg", "简约深"))
-            }
+        } catch (e: Exception) {
+            Log.w(TAG, "catalog load failed", e)
+            listOf(
+                Demo(
+                    "minimal",
+                    "简约",
+                    "wallpaper/demo_minimal_dark.jpg",
+                    "wallpaper/demo_minimal_light.jpg",
+                ),
+            )
+        }
     }
 }

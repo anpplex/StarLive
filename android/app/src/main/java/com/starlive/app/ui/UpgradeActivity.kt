@@ -15,8 +15,6 @@ import com.starlive.app.BuildConfig
 import com.starlive.app.StarLiveApp
 import com.starlive.app.upgrade.LyraPresence
 import com.starlive.app.wallpaper.WallpaperRepository
-import java.io.File
-import java.io.FileOutputStream
 
 class UpgradeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,29 +116,6 @@ class UpgradeActivity : AppCompatActivity() {
         )
     }
 
-    private fun exportHandoff(): Boolean {
-        return runCatching {
-            WallpaperRepository.ensureSeeded(this)
-            val dir = File("/storage/emulated/0/Download/StarLive").also { it.mkdirs() }
-            val active = WallpaperRepository.activeFile(this)
-            if (active.isFile) {
-                active.copyTo(File(dir, "active_wallpaper.jpg"), overwrite = true)
-                active.copyTo(File(dir, "starlive_wallpaper.jpg"), overwrite = true)
-                active.copyTo(File(dir, "lyra_wallpaper.jpg"), overwrite = true)
-            }
-            val json =
-                """
-                {
-                  "format": "starlive-handoff/v1",
-                  "activeId": "${WallpaperRepository.activeId(this)}",
-                  "idlePrefer": ${WallpaperRepository.idlePrefer(this)},
-                  "nightMode": "${WallpaperRepository.nightMode(this)}",
-                  "starliveVersion": "${BuildConfig.VERSION_NAME}",
-                  "files": { "active": "active_wallpaper.jpg" }
-                }
-                """.trimIndent()
-            FileOutputStream(File(dir, "handoff.json")).use { it.write(json.toByteArray()) }
-            true
-        }.getOrDefault(false)
-    }
+    private fun exportHandoff(): Boolean =
+        WallpaperRepository.exportHandoffFiles(this, BuildConfig.VERSION_NAME)
 }

@@ -1,24 +1,22 @@
 {
   "wallpapers": [
     {
-      "id": "demo_minimal_dark",
-      "file": "demo_minimal_dark.jpg",
-      "label": "简约深"
+      "id": "minimal",
+      "label": "简约",
+      "dark": "demo_minimal_dark.jpg",
+      "light": "demo_minimal_light.jpg"
     },
     {
-      "id": "demo_minimal_light",
-      "file": "demo_minimal_light.jpg",
-      "label": "简约浅"
+      "id": "atmosphere",
+      "label": "氛围",
+      "dark": "demo_atmosphere_dark.jpg",
+      "light": "demo_atmosphere_light.jpg"
     },
     {
-      "id": "demo_atmosphere",
-      "file": "demo_atmosphere.jpg",
-      "label": "氛围"
-    },
-    {
-      "id": "demo_abstract",
-      "file": "demo_abstract.jpg",
-      "label": "抽象"
+      "id": "abstract",
+      "label": "抽象",
+      "dark": "demo_abstract_dark.jpg",
+      "light": "demo_abstract_light.jpg"
     }
   ]
 }

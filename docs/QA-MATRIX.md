@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 版本基线 | **0.1.22-music** |
+| 版本基线 | **0.1.24-cache** |
 | 日期 | 2026-08-03 |
 | 车型 / 序列号 | ICHU3200E15-ADV · **LD249H019625** |
 | 用途 | 提测 / 发版前勾选；对照 [INTERACTION-1.0.md](./INTERACTION-1.0.md) |
@@ -16,7 +16,7 @@
 | 项 | 记录 |
 |----|------|
 | 车型 / 固件 | ICHU3200E15-ADV（华为车机 installer 旁路装机） |
-| 星澜 versionName / Code | **0.1.22-music** / 24 |
+| 星澜 versionName / Code | **0.1.24-cache** / 26 |
 | 是否双装 Lyra | **是** · `com.lyra.cluster` |
 | 测试人 / 日期 | 实车 adb · 2026-08-03 |
 
@@ -45,8 +45,8 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 
 | # | 场景 | 期望 | 结果 |
 |---|------|------|------|
-| I1 | 相册选图 → 确认 → 应用 | 裁切预览正确；一步上屏 | ⚠️ 0.1.19：导入→「从相册/文件选择」可拉起系统选择器（ES 等）；确认页+上屏与 I2 同源 `ImportConfirm` 已验；第三方文件管理器内选文件需人工点完 |
-| I2 | Download `starlive_wallpaper.jpg` 导入 | 成功入库 | ✅ 0.1.10 多用户路径 |
+| I1 | 相册选图 → 确认 → 应用 | 裁切预览正确；一步上屏 | ⚠️ **0.1.24**：优先 SAF `OpenDocument`；确认页+上屏与 I2 同源；第三方文件管理器内完整点选仍需人工 |
+| I2 | Download `starlive_wallpaper.jpg` 导入 | 成功入库 | ✅ 0.1.10 多用户路径；**0.1.24** UI 导入→Download→确认→库 `lib:*` |
 | I3 | 4032×284 全条图 | 右带裁切（跳过表盘 1042） | ✅ 0.1.14 确认页「右带」+ unit BAND |
 | I4 | 2990×284 精确图 | EXACT 策略 | ✅ 0.1.14 确认页「尺寸匹配」+ unit EXACT |
 | I5 | 损坏 / 极小图 | 失败提示；不崩 | ✅ 0.1.14 损坏 → 回主页不崩；unit 非法 bounds |
@@ -137,8 +137,8 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 | # | 场景 | 期望 | 结果 |
 |---|------|------|------|
 | A1 | 自动 + 车机自适应 | 读 `ui_night_mode=9`；有效浅/深 | ✅ 0.1.21 · adaptive(9) → day · glass `#E8EAEE` |
-| A2 | 设置改深色/浅色 | 羽化重烘焙 + 交叉淡入 | ⬜ 人工：设置→显示 |
-| A3 | 示范双图随日夜 | dark/light asset 切换 | ⬜ 依赖 A2 |
+| A2 | 设置改深色/浅色 | 羽化重烘焙 + 交叉淡入 | ✅ **0.1.24** adb `settings put secure ui_night_mode` 2→1→9：`ambient flip` + secure-observer |
+| A3 | 示范双图随日夜 | dark/light asset 切换 | ✅ 0.1.24 ambient flip 触发 `applyDemo` 路径（与 A2 同轮） |
 
 ---
 
@@ -148,6 +148,8 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | 版本 | 日期 | 必勾结果 | 备注 |
 |------|------|----------|------|
+| **0.1.24-cache** | 2026-08-03 | 羽化缓存 · SAF 导入 · ambient chip 刷新 | 见 CHANGELOG 0.1.24 |
+| **0.1.23-preview** | 2026-08-03 | 首页预览 = 星环同源 bake | decodeActiveForStrip hero |
 | **0.1.22-music** | 2026-08-03 | **M1b ✅** · WE 不挡上屏 · apply ok · 已上屏 | `MusicPlaybackFilter`；真音乐 M1 ⬜ |
 | **0.1.21-ambient** | 2026-08-03 | **A1 ✅** · 远端日夜自适应 | glass re-bake · AmbientWatch |
 | **0.1.20-ui** | 2026-08-03 | **U1–U4 ✅** · 二级页 UiKit 对齐 | 关于/规格/定制/升级冒烟 |

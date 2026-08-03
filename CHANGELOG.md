@@ -7,7 +7,7 @@
 ### Planned
 
 - 在线主题商店（非兑换码路径）
-- QA 剩余 ⬜：M3 实车切歌；I1 第三方文件管理器内完整点选（选择器已通）
+- QA 剩余 ⬜：I1 第三方文件管理器内完整点选（选择器已通）；R3/R4 Admin
 
 ## [0.1.24-cache] — 2026-08-03
 
@@ -21,6 +21,8 @@
 
 - **M1** `com.huawei.music.auto` 播歌 → 胶囊让出 · 无 ClusterStrip
 - **M1b** Wallpaper Engine 不挡上屏（0.1.22）
+- **M2** MEDIA_PAUSE ≥8s → `after-play` 夺回上屏
+- **M3** MEDIA_NEXT 切歌空隙：`grace=3000ms` · 无闪上屏；曲目切换正常
 - **A2** `ui_night_mode` 翻转 ambient
 - **I2** Download 导入确认入库
 

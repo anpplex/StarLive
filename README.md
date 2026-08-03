@@ -29,7 +29,7 @@
 - ✅ 远端日夜跟随（`ui_night_mode`）+ 星环羽化交叉淡入
 - ✅ 播歌让出过滤壁纸引擎假阳性（0.1.22）
 - ✅ 首页预览与星环同源烘焙 + 羽化缓存
-- ✅ 实车矩阵大部通过（[QA-MATRIX](./docs/QA-MATRIX.md)）；剩余 I1 完整选图 / M3 实车切歌 / 真音乐让出回归需人工；0.1.22 已过滤 Wallpaper Engine 假让出
+- ✅ 实车矩阵大部通过（[QA-MATRIX](./docs/QA-MATRIX.md)）；**M1–M3** 华为音乐已验；剩余 I1 文件管理器内完整点选 / R3–R4 Admin；0.1.22 已过滤 Wallpaper Engine 假让出
 
 ## 快速开始
 

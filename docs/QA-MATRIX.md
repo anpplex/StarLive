@@ -62,8 +62,8 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 |---|------|------|------|
 | M1 | 空闲开 + 播歌 | 让出星环；通知可提示让出 | ✅ 0.1.11 网易云；**0.1.24** `com.huawei.music.auto` USAGE_MEDIA · 胶囊「播歌中·已让出」· **无** ClusterStrip · remotescreen 接管 |
 | M1b | 仅 Wallpaper Engine / motif 壁纸在播 | **不**让出；可上屏 | ✅ **0.1.22-music** · `MusicPlaybackFilter` 忽略 WE；胶囊「已上屏」· `applyCurrent ok` |
-| M2 | 暂停 ≥8s | 夺回壁纸 | ✅ 0.1.11 ~8s after-play |
-| M3 | 切歌空隙 <3s | 不闪壁纸 | ⬜ 待连机（需人工切歌）；单测 `PlaybackGateTest` ✅ |
+| M2 | 暂停 ≥8s | 夺回壁纸 | ✅ 0.1.11；**0.1.24** MEDIA_PAUSE → ~9s 后 `after-play` apply · ClusterStrip 恢复 |
+| M3 | 切歌空隙 <3s | 不闪壁纸 | ✅ **0.1.24** 华为音乐 MEDIA_NEXT×3：`rawPlaying=false grace=3000ms` · 空隙无 apply · 无 Cluster 闪上；曲目已换；单测 `PlaybackGateTest` ✅ |
 | M4 | 无通知使用权 | 仍可上壁纸；让出可能不准 + 有引导 | ⚠️ 车机 NLS 常不可用；0.1.22 过滤后的 `activePlaybackConfigurations` 兜底 |
 | M5 | 应用时正在播歌 | deferred 提示；停播后生效 | ✅ 0.1.11 |
 
@@ -148,7 +148,7 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | 版本 | 日期 | 必勾结果 | 备注 |
 |------|------|----------|------|
-| **0.1.24-cache** | 2026-08-03 | 羽化缓存 · SAF · **M1 ✅** 华为音乐让出 · A2/I2 | 见 CHANGELOG；tag `v0.1.24-cache` |
+| **0.1.24-cache** | 2026-08-03 | **M1/M2/M3 ✅** 华为音乐 · 羽化缓存 · SAF · A2/I2 | tag `v0.1.24-cache`；切歌 MEDIA_NEXT 验 gap 3s |
 | **0.1.23-preview** | 2026-08-03 | 首页预览 = 星环同源 bake | decodeActiveForStrip hero |
 | **0.1.22-music** | 2026-08-03 | **M1b ✅** · WE 不挡上屏 · apply ok · 已上屏 | `MusicPlaybackFilter`；真音乐 M1 ⬜ |
 | **0.1.21-ambient** | 2026-08-03 | **A1 ✅** · 远端日夜自适应 | glass re-bake · AmbientWatch |

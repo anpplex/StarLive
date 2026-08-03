@@ -179,6 +179,7 @@ object WallpaperRepository {
             prefs(context).edit()
                 .putBoolean(KEY_HAS_IMAGE, true)
                 .putString(KEY_ACTIVE_ID, themeId)
+                .remove(KEY_CUSTOM_LABEL) // drop stale「夜色」等库标签
                 .apply()
             true
         }.onFailure { Log.w(TAG, "applyDemo failed $themeId $asset", it) }.getOrDefault(false)

@@ -8,11 +8,21 @@ cd /Users/anpple/Codex/StarLive/android
 # APK → app/build/outputs/apk/debug/app-debug.apk
 ```
 
-一键构建并安装：
+一键构建并安装（手机 / 通用 adb）：
 
 ```bash
 ./scripts/install-starlive.sh --build --launch
 ```
+
+**阿维塔 / 华为车机**（`adb install` 会 `INSTALL_FAILED_INTERNAL_ERROR` / Hw verifyApp）：
+
+```bash
+cd android && ./gradlew :app:assembleDebug
+./scripts/install-starlive-car.sh LD249H019625
+# 或 SERIAL=你的序列号 ./scripts/install-starlive-car.sh
+```
+
+原理：临时 disable `packageinstaller`，以 `-i com.huawei.appinstaller.car` 安装到 **user 12**（与 Lyra 相同）。
 
 Release 需自备签名配置（不入库）。
 

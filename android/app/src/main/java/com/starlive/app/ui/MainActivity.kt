@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -149,37 +150,27 @@ class MainActivity : AppCompatActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
-        row.addView(primaryBtn("应用当前") { applyWallpaper() }.also {
-            (it.layoutParams as LinearLayout.LayoutParams).apply {
-                width = 0
-                weight = 1f
-                marginEnd = dp(8)
-            }
-        })
-        row.addView(secondaryBtn("导入图片") { showImportSheet() }.also {
-            (it.layoutParams as LinearLayout.LayoutParams).apply {
-                width = 0
-                weight = 1f
-                marginEnd = dp(8)
-            }
-        })
-        row.addView(secondaryBtn("我要定制") {
-            startActivity(Intent(this, CustomActivity::class.java))
-        }.also {
-            (it.layoutParams as LinearLayout.LayoutParams).width = 0
-            (it.layoutParams as LinearLayout.LayoutParams).weight = 1f
-        })
+        fun rowLp(end: Int = 0) = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            if (end > 0) marginEnd = end
+        }
+        row.addView(primaryBtn("应用当前") { applyWallpaper() }, rowLp(dp(8)))
+        row.addView(secondaryBtn("导入图片") { showImportSheet() }, rowLp(dp(8)))
+        row.addView(
+            secondaryBtn("我要定制") {
+                startActivity(Intent(this, CustomActivity::class.java))
+            },
+            rowLp(),
+        )
         root.addView(row)
 
         root.addView(
             secondaryBtn("兑换主题") {
                 startActivity(Intent(this, RedeemActivity::class.java))
-            }.also {
-                it.layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(8) }
             },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) },
         )
 
         // Demos
@@ -442,7 +433,20 @@ class MainActivity : AppCompatActivity() {
             WallpaperRepository.setFirstRunHintShown(this)
         }
 
-        setContentView(root)
+        // Car HU may be short landscape — keep all settings reachable
+        setContentView(
+            ScrollView(this).apply {
+                setBackgroundColor(Color.parseColor("#0B0E12"))
+                isFillViewport = true
+                addView(
+                    root,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+            },
+        )
         refreshUi()
     }
 

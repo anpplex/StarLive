@@ -11,8 +11,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.1.11-car"
+        versionCode = 14
+        versionName = "0.1.12-car"
         // Override at build: -PREDEEM_API_BASE=https://host
         buildConfigField(
             "String",

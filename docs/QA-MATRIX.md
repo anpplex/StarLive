@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 版本基线 | **0.1.19-qa** |
+| 版本基线 | **0.1.20-ui** |
 | 日期 | 2026-08-03 |
 | 车型 / 序列号 | ICHU3200E15-ADV · **LD249H019625** |
 | 用途 | 提测 / 发版前勾选；对照 [INTERACTION-1.0.md](./INTERACTION-1.0.md) |
@@ -16,7 +16,7 @@
 | 项 | 记录 |
 |----|------|
 | 车型 / 固件 | ICHU3200E15-ADV（华为车机 installer 旁路装机） |
-| 星澜 versionName / Code | **0.1.19-qa** / 21 |
+| 星澜 versionName / Code | **0.1.20-ui** / 22 |
 | 是否双装 Lyra | **是** · `com.lyra.cluster` |
 | 测试人 / 日期 | 实车 adb · 2026-08-03 |
 
@@ -118,7 +118,18 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 | L1 | 双装 · 星澜「已装 Lyra 时让路」开 | 星澜不占星环 | ✅ 0.1.10 lyra handoff + release |
 | L2 | Lyra「下载导入」 | 优先 ContentProvider 读星澜当前图 | ✅ 星澜侧 meta/active 可读（0.1.13）；Lyra UI 点导入 ⬜ |
 | L3 | 仅导出 Download 无星澜进程 | Lyra 仍可从文件导入 | ⚠️ 主路径为 CP（L2）；公开 Download 导出受车机存储策略限制，0.1.17 MediaStore 尽力写 |
-| L4 | 升级页文案 / 打开 Lyra | 可启动；让路按钮有效 | ✅ 0.1.17 升级页 ·「打开 Lyra」拉起 `com.lyra.cluster` |
+| L4 | 升级页文案 / 打开 Lyra | 可启动；让路按钮有效 | ✅ 0.1.17 升级页 ·「打开 Lyra」拉起 `com.lyra.cluster`；**0.1.20-ui** UiKit 对齐后仍可 `am start` |
+
+---
+
+## 7b. 二级页 UX 烟测
+
+| # | 场景 | 期望 | 结果 |
+|---|------|------|------|
+| U1 | 关于页 | 版本号、检查更新、导航入口；UiKit 卡片/按钮 | ✅ 0.1.20-ui `AboutActivity` 可启动 · 显示 0.1.20-ui (22) |
+| U2 | 规格说明 | 几何/导入约定卡片 | ✅ 0.1.20-ui `SpecActivity` |
+| U3 | 私人定制 | 文案 + 复制微信 | ✅ 0.1.20-ui `CustomActivity` |
+| U4 | 升级到 Lyra | Lyra 状态 + 导出 handoff + 打开 Lyra | ✅ 0.1.20-ui `UpgradeActivity`（双装时「打开 Lyra」） |
 
 ---
 
@@ -128,6 +139,7 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | 版本 | 日期 | 必勾结果 | 备注 |
 |------|------|----------|------|
+| **0.1.20-ui** | 2026-08-03 | **U1–U4 ✅** · 二级页 UiKit 对齐 | 关于/规格/定制/升级 `am start` 冒烟；功能回归仍以 0.1.19 为准 |
 | **0.1.19-qa** | 2026-08-03 | **R6 ✅** · **I1 ⚠️ 选择器可开** · 网络错误中文映射 | 不可达 API 复现断网；相册走系统/ES 选择器 |
 | **0.1.17-car** | 2026-08-03 | C1/C2 ✅ · R2 ✅ · L2/L4 ✅ · B4 播歌中正确让出 · L3 以 CP 为主 | MediaStore 导出 + KeepAlive 重申 + CI 边界 |
 | **0.1.14-car** | 2026-08-03 | I3–I5 ✅ · crop unit ✅ · process-start 0.4s | 裁切策略单测 + 实车 Download 导入确认页 |

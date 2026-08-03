@@ -13,6 +13,8 @@
 ### Added
 
 - `docs/QA-MATRIX.md` · `docs/CUSTOM-SOP.md` · `docs/INSTALL.md`
+- GitHub Actions：PR/push `android/**` → assembleDebug + APK artifact
+- `scripts/install-starlive.sh` 一键构建/安装
 
 ## [0.1.7-core] — 2026-08-03
 

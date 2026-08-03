@@ -13,13 +13,17 @@
 git checkout main && git pull
 git checkout -b feature/<topic>
 # 修改 android/ 与必要 docs
-cd android && ./gradlew :app:assembleDebug
+cd android && ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
 git commit && git push -u origin HEAD
-# 开 PR → 合并 main
+# 开 PR → 合并 main（CI 会跑 assembleDebug）
 ```
+
+装机：`./scripts/install-starlive.sh --build --launch`  
+验收：`docs/QA-MATRIX.md`
 
 ## 行为准则
 
 - 一条 PR 一类事；Conventional Commits。  
 - 勿提交密钥与 APK 二进制。  
-- 壁纸几何与 Lyra 兼容，勿私创分辨率。  
+- 壁纸几何与 Lyra 兼容，勿私创分辨率（改 core 时同步核对 Lyra profile）。  
+- 几何/裁切/软边优先改 `:ring-wallpaper-core`，勿在 app 复制一套。  

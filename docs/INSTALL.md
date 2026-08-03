@@ -4,8 +4,14 @@
 
 ```bash
 cd /Users/anpple/Codex/StarLive/android
-./gradlew :app:assembleDebug
+./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
 # APK → app/build/outputs/apk/debug/app-debug.apk
+```
+
+一键构建并安装：
+
+```bash
+./scripts/install-starlive.sh --build --launch
 ```
 
 Release 需自备签名配置（不入库）。
@@ -14,7 +20,7 @@ Release 需自备签名配置（不入库）。
 
 ```bash
 adb devices
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.starlive.app/.ui.MainActivity
 ```
 

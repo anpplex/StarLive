@@ -40,6 +40,8 @@
 | 实车验收矩阵 QA-MATRIX | ✅ `docs/QA-MATRIX.md` |
 | 定制履约 SOP | ✅ `docs/CUSTOM-SOP.md` |
 | 装机说明 INSTALL | ✅ `docs/INSTALL.md` |
+| GitHub Actions assembleDebug | ✅ `.github/workflows/android.yml` |
+| adb 一键装机脚本 | ✅ `scripts/install-starlive.sh` |
 
 ## 发版
 

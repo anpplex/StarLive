@@ -40,7 +40,7 @@ cd android
 | [docs/LYRA-UPGRADE.md](./docs/LYRA-UPGRADE.md) | 与 Lyra 的互通约定 |
 | [docs/THEME-PACK.md](./docs/THEME-PACK.md) | 主题包格式 |
 | [docs/RING-WALLPAPER-CORE.md](./docs/RING-WALLPAPER-CORE.md) | 几何与裁切模块 |
-| [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md) | 私人定制履约 |
+| [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md) | 壁纸定制 |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
 
 索引：[docs/README.md](./docs/README.md)

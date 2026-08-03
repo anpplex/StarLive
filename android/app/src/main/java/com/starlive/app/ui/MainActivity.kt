@@ -263,6 +263,104 @@ class MainActivity : AppCompatActivity() {
             },
         )
 
+        // Yield when Lyra installed
+        val lyraRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, 0)
+        }
+        lyraRow.addView(
+            TextView(this).apply {
+                text = "已装 Lyra 时让路"
+                setTextColor(Color.WHITE)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        lyraRow.addView(
+            Switch(this).apply {
+                isChecked = WallpaperRepository.yieldWhenLyraInstalled(this@MainActivity)
+                setOnCheckedChangeListener { _, checked ->
+                    WallpaperRepository.setYieldWhenLyraInstalled(this@MainActivity, checked)
+                    orch.refreshLyraHandoff("user-toggle")
+                    refreshUi()
+                    Toast.makeText(
+                        this@MainActivity,
+                        if (checked) "检测到 Lyra 时星澜不占星环" else "即使已装 Lyra 也可上壁纸",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            },
+        )
+        root.addView(lyraRow)
+
+        // Carousel
+        val carRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, 0)
+        }
+        carRow.addView(
+            TextView(this).apply {
+                text = "示范轮播"
+                setTextColor(Color.WHITE)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        carRow.addView(
+            Switch(this).apply {
+                isChecked = WallpaperRepository.isCarouselEnabled(this@MainActivity)
+                setOnCheckedChangeListener { _, checked ->
+                    WallpaperRepository.setCarouselEnabled(this@MainActivity, checked)
+                    (application as StarLiveApp).wallpaperCarousel.syncFromSettings()
+                    refreshUi()
+                }
+            },
+        )
+        root.addView(carRow)
+        val intervalRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, 0)
+        }
+        intervalRow.addView(
+            TextView(this).apply {
+                text = "轮播间隔"
+                setTextColor(Color.parseColor("#C5D0E0"))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        val intervalVal = TextView(this).apply {
+            text = "${WallpaperRepository.carouselIntervalMinutes(this@MainActivity)} 分钟"
+            setTextColor(Color.parseColor("#8BB4E0"))
+            setPadding(dp(8), 0, dp(8), 0)
+        }
+        intervalRow.addView(
+            Button(this).apply {
+                text = "−"
+                setOnClickListener {
+                    val m = (WallpaperRepository.carouselIntervalMinutes(this@MainActivity) - 1)
+                        .coerceAtLeast(WallpaperRepository.CAROUSEL_MIN)
+                    WallpaperRepository.setCarouselIntervalMinutes(this@MainActivity, m)
+                    intervalVal.text = "$m 分钟"
+                    (application as StarLiveApp).wallpaperCarousel.reschedule()
+                }
+            },
+        )
+        intervalRow.addView(intervalVal)
+        intervalRow.addView(
+            Button(this).apply {
+                text = "+"
+                setOnClickListener {
+                    val m = (WallpaperRepository.carouselIntervalMinutes(this@MainActivity) + 1)
+                        .coerceAtMost(WallpaperRepository.CAROUSEL_MAX)
+                    WallpaperRepository.setCarouselIntervalMinutes(this@MainActivity, m)
+                    intervalVal.text = "$m 分钟"
+                    (application as StarLiveApp).wallpaperCarousel.reschedule()
+                }
+            },
+        )
+        root.addView(intervalRow)
+
         // Night mode
         root.addView(
             TextView(this).apply {
@@ -325,7 +423,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        orch.refreshLyraHandoff("main-resume")
         refreshUi()
+        maybeSoftHints()
+    }
+
+    private fun maybeSoftHints() {
+        if (!WallpaperRepository.nlsHintShown(this)) {
+            WallpaperRepository.setNlsHintShown(this)
+            // Non-blocking: only toast once
+            Toast.makeText(this, R.string.nls_hint, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun applyWallpaper() {
@@ -417,7 +525,13 @@ class MainActivity : AppCompatActivity() {
         val idle = WallpaperRepository.idlePrefer(this)
         val showing = orch.showing && orch.display.isAlive()
         val playing = orch.isEffectivelyPlaying()
+        val handoff = orch.isHandedOffToLyra()
         when {
+            handoff -> {
+                statusTv.text = getString(R.string.status_handed_off)
+                statusTv.setTextColor(Color.parseColor("#B8A0E0"))
+                heroSub.text = getString(R.string.hero_handed_off)
+            }
             playing && idle -> {
                 statusTv.text = getString(R.string.status_yield_playing)
                 statusTv.setTextColor(Color.parseColor("#8BB4E0"))

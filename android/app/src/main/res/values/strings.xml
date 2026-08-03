@@ -26,4 +26,6 @@
     <string name="status_yield_playing">播歌中 · 已让出</string>
     <string name="nls_hint">建议开启通知使用权，以便播歌时自动让出星环（设置 → 通知使用权 → 星澜）</string>
     <string name="hero_yield_playing">播歌中已让出星环 · 停播后自动恢复</string>
+    <string name="status_handed_off">已移交 Lyra</string>
+    <string name="hero_handed_off">已安装 Lyra · 星澜不占星环（可在设置关闭「已装 Lyra 时让路」）</string>
 </resources>

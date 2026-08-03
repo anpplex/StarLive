@@ -24,8 +24,16 @@ object WallpaperRepository {
     private const val KEY_NIGHT = "night_mode" // auto|dark|light
     private const val KEY_HINT = "first_run_hint_shown"
     private const val KEY_CUSTOM_LABEL = "custom_label"
+    private const val KEY_CAROUSEL = "carousel_enabled"
+    private const val KEY_CAROUSEL_MIN = "carousel_interval_min"
+    private const val KEY_YIELD_LYRA = "yield_when_lyra_installed"
+    private const val KEY_NLS_HINT = "nls_hint_shown"
+    private const val KEY_BATTERY_HINT = "battery_hint_shown"
     private const val FILE_ACTIVE = "active_wallpaper.jpg"
     private const val CATALOG = "wallpaper/catalog.json"
+    const val CAROUSEL_MIN = 1
+    const val CAROUSEL_MAX = 60
+    const val CAROUSEL_DEFAULT = 5
 
     /** Download / Pictures scan order (Lyra-compatible names last for handoff). */
     val DOWNLOAD_CANDIDATES = listOf(
@@ -66,6 +74,55 @@ object WallpaperRepository {
 
     fun setFirstRunHintShown(context: Context) {
         prefs(context).edit().putBoolean(KEY_HINT, true).apply()
+    }
+
+    fun isCarouselEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CAROUSEL, false)
+
+    fun setCarouselEnabled(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(KEY_CAROUSEL, value).apply()
+    }
+
+    fun carouselIntervalMinutes(context: Context): Int =
+        prefs(context).getInt(KEY_CAROUSEL_MIN, CAROUSEL_DEFAULT)
+            .coerceIn(CAROUSEL_MIN, CAROUSEL_MAX)
+
+    fun setCarouselIntervalMinutes(context: Context, minutes: Int) {
+        prefs(context).edit()
+            .putInt(KEY_CAROUSEL_MIN, minutes.coerceIn(CAROUSEL_MIN, CAROUSEL_MAX))
+            .apply()
+    }
+
+    /** When Lyra is installed, StarLive stops claiming the strip (P0.5). Default on. */
+    fun yieldWhenLyraInstalled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_YIELD_LYRA, true)
+
+    fun setYieldWhenLyraInstalled(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(KEY_YIELD_LYRA, value).apply()
+    }
+
+    fun nlsHintShown(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_NLS_HINT, false)
+
+    fun setNlsHintShown(context: Context) {
+        prefs(context).edit().putBoolean(KEY_NLS_HINT, true).apply()
+    }
+
+    fun batteryHintShown(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_BATTERY_HINT, false)
+
+    fun setBatteryHintShown(context: Context) {
+        prefs(context).edit().putBoolean(KEY_BATTERY_HINT, true).apply()
+    }
+
+    /** Advance to next demo (skips custom). Returns new id or null. */
+    fun advanceToNextDemo(context: Context): String? {
+        val list = demos(context)
+        if (list.size < 2) return null
+        val cur = activeId(context)
+        val idx = list.indexOfFirst { it.id == cur }.let { if (it < 0) 0 else it }
+        val next = list[(idx + 1) % list.size]
+        return if (applyDemo(context, next.id)) next.id else null
     }
 
     fun activeFile(context: Context): File =

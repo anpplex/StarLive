@@ -18,4 +18,12 @@
     <string name="restore_msg">将清除当前自定义图在星澜中的选用（Download 中的原文件不会删除）。</string>
     <string name="restore_demo">恢复</string>
     <string name="restore_done">已恢复示范 · 点应用同步到星环</string>
+    <string name="notif_channel">星澜运行状态</string>
+    <string name="notif_keeping">星澜正在保持星环壁纸</string>
+    <string name="notif_yield_playing">星澜 · 播歌中已让出星环</string>
+    <string name="nls_label">星澜媒体会话</string>
+    <string name="toast_apply_deferred">播歌中无法占用星环 · 停播后生效</string>
+    <string name="status_yield_playing">播歌中 · 已让出</string>
+    <string name="nls_hint">建议开启通知使用权，以便播歌时自动让出星环（设置 → 通知使用权 → 星澜）</string>
+    <string name="hero_yield_playing">播歌中已让出星环 · 停播后自动恢复</string>
 </resources>

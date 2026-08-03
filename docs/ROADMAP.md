@@ -32,6 +32,7 @@
 | 主题包兑换码（App 端 + LicenseHub API） | ✅ 0.1.5-redeem（`feature/theme-pack-redeem`） |
 | 主题包格式文档 + `make-theme-pack.sh` | ✅ 见 `docs/THEME-PACK.md` |
 | LicenseHub Admin「星澜兑换」发码 | ✅（LicenseHub 仓） |
+| LicenseHub 兑换码作废 + 生产部署 | ✅ Admin 作废；DEMO 码应废止 |
 | GIF / 视频壁纸 | ❌ 暂缓（产品演进备忘） |
 | ring-wallpaper-core 共享 | ⬜ |
 

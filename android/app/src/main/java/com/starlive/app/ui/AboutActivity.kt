@@ -62,9 +62,15 @@ class AboutActivity : AppCompatActivity() {
             body(
                 "免责声明：第三方工具，与阿维塔 / 华为官方无关。系统升级可能导致功能变化或失效。\n\n" +
                     "安全：请在停车时设置壁纸，勿在驾驶过程中操作。\n\n" +
-                    "隐私：默认不强制联网；图片仅本地处理；媒体播放状态仅用于播歌让出，不做歌词分析。详见仓库 docs/PRIVACY.md。\n\n" +
+                    "隐私：默认不强制联网；图片仅本地处理；媒体播放状态仅用于播歌让出，不做歌词分析。" +
+                    "使用「兑换主题」时会联网提交兑换码与设备标识。详见仓库 docs/PRIVACY.md。\n\n" +
                     "协议：Apache-2.0",
             ),
+        )
+        col.addView(
+            btn("兑换主题") {
+                startActivity(Intent(this, RedeemActivity::class.java))
+            },
         )
         col.addView(
             btn("升级到 Lyra") {

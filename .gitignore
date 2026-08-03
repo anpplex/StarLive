@@ -1,50 +1,47 @@
-# --- OS / IDE ---
+
 .DS_Store
-Thumbs.db
-*.swp
-*~
-.idea/
-*.iml
-.vscode/
-*.hprof
-**/.kotlin/
-
-# --- Android / Gradle ---
-**/build/
-**/.gradle/
-**/local.properties
-**/.cxx/
-**/captures/
-*.apk
-*.ap_
-*.aab
-*.dex
-*.class
-
-# --- Secrets ---
-*.jks
-*.keystore
-*.p12
-*.pem
-*.key
 .env
 .env.*
-**/secret*
-**/secrets/
-**/keystore.properties
-android/release.keystore
-
-# --- Logs / scratch ---
-*.log
-logcat*.txt
 .grok-collaborator/
 .grok/
-
-# --- Node (if scripts later) ---
-node_modules/
-
-# --- Large / reverse engineering (never track) ---
+.idea/
+.vscode/
+*.aab
+*.ap_
+*.apk
+*.class
+*.dex
+*.hprof
+*.iml
+*.jks
+*.key
+*.keystore
+*.log
+*.p12
+*.pem
+*.swp
+**/.cxx/
+**/.gradle/
+**/.kotlin/
 **/*.zip
+**/build/
+**/captures/
 **/jadx*/**
+**/keystore.properties
+**/local.properties
+**/secret*
+**/secrets/
+*~
+# --- Android / Gradle ---
+# --- Large / reverse engineering (never track) ---
+# --- Logs / scratch ---
+# --- Node (if scripts later) ---
+# --- OS / IDE ---
+# --- Secrets ---
+android/release.keystore
+logcat*.txt
+node_modules/
 research/apks/
 research/decompile/
+screenshot-*.png
+Thumbs.db

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">星澜</string>
-    <string name="skeleton_hint">工程骨架已就绪。下一阶段：星环壁纸上屏与首页三键（见 docs/TECH-NOTES-1.0.md Phase 1）。</string>
+    <string name="idle_caption">开启后占用星环显示壁纸，并在车辆启动后尝试自动恢复</string>
+    <string name="first_run_hint">点「应用当前」或点上方预览条，把示范壁纸打到星环</string>
+    <string name="toast_applied">已应用到星环</string>
+    <string name="toast_apply_fail">无法上屏 · 请确认星环 Display 可用</string>
 </resources>

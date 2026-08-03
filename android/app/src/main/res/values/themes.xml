@@ -8,4 +8,8 @@
         <item name="colorPrimaryDark">#0B0E12</item>
         <item name="colorAccent">#5B8DEF</item>
     </style>
+    <style name="Theme.StarLive.Cluster" parent="Theme.StarLive">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
 </resources>

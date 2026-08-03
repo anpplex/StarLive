@@ -18,5 +18,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.ClusterStripActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:taskAffinity="com.starlive.app.cluster"
+            android:theme="@style/Theme.StarLive.Cluster" />
     </application>
 </manifest>

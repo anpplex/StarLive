@@ -14,5 +14,8 @@
 | D10 | **Lyra 子项目**；必须丝滑升级；契约见 LYRA-UPGRADE | 2026-08-03 |
 | D11 | 1.0 代码从 Lyra **拷贝精简**，不链 monorepo；稳定后可抽 core | 2026-08-03 |
 | D12 | GitHub Flow；bootstrap 后 **禁止直推 main** | 2026-08-03 |
+| D13 | 主题兑换码默认 **一码一设备**；服务端原子核销；禁止依赖纯 6 位数字；包短时 URL | 2026-08-03 |
+
+兑换码安全全文：`docs/SECURITY-REDEEM-CODES.md`。
 
 详情：`INTERACTION-1.0.md` §15 · `TECH-NOTES-1.0.md` · `LYRA-UPGRADE.md` · `GIT_WORKFLOW.md`。

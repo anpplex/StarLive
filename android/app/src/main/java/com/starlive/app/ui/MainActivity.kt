@@ -171,6 +171,17 @@ class MainActivity : AppCompatActivity() {
         })
         root.addView(row)
 
+        root.addView(
+            secondaryBtn("兑换主题") {
+                startActivity(Intent(this, RedeemActivity::class.java))
+            }.also {
+                it.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(8) }
+            },
+        )
+
         // Demos
         root.addView(
             TextView(this).apply {

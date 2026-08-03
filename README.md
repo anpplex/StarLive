@@ -21,7 +21,8 @@
 ## 当前状态
 
 - ✅ 产品 / 交互 / 技术规格（见 `docs/`）
-- ⏳ Android 工程（按 `docs/TECH-NOTES-1.0.md` Phase 0 搭建中）
+- ✅ Android App（空闲壁纸、导入、播歌让出、多图库、主题兑换）
+- ✅ 主题包格式与打包脚本（`docs/THEME-PACK.md` · `scripts/make-theme-pack.sh`）
 
 ## 文档入口
 

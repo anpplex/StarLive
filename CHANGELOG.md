@@ -6,7 +6,19 @@
 
 ### Planned
 
-- Lyra 侧 ContentProvider 一键导入、主题包兑换码
+- Lyra 侧 ContentProvider 一键导入
+- 在线主题商店（非兑换码路径）
+
+## [0.1.5-redeem] — 2026-08-03
+
+### Added
+
+- 主题包兑换：首页「兑换主题」→ 输入码 → LicenseHub 核销 → 下载 zip → 入库本地图库
+- `DeviceIdentity`（一码一设备 device_id）
+- `RedeemClient` + `ThemePackInstaller`（catalog.json + 壁纸文件）
+- `BuildConfig.REDEEM_API_BASE`（默认 `https://buy.998618.xyz`，可 `-PREDEEM_API_BASE=` 覆盖）
+- 安全文档 `docs/SECURITY-REDEEM-CODES.md`
+- 主题包格式 `docs/THEME-PACK.md` · 打包脚本 `scripts/make-theme-pack.sh`
 
 ## [0.1.4-lib] — 2026-08-03
 

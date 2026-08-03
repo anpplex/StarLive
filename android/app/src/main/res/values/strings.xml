@@ -28,4 +28,6 @@
     <string name="hero_yield_playing">播歌中已让出星环 · 停播后自动恢复</string>
     <string name="status_handed_off">已移交 Lyra</string>
     <string name="hero_handed_off">已安装 Lyra · 星澜不占星环（可在设置关闭「已装 Lyra 时让路」）</string>
+    <string name="redeem_title">兑换主题</string>
+    <string name="redeem_hint">输入兑换码解锁官方主题壁纸</string>
 </resources>

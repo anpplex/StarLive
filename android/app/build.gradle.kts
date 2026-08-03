@@ -11,8 +11,14 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.1.4-lib"
+        versionCode = 7
+        versionName = "0.1.5-redeem"
+        // Override at build: -PREDEEM_API_BASE=https://host
+        buildConfigField(
+            "String",
+            "REDEEM_API_BASE",
+            "\"${project.findProperty("REDEEM_API_BASE") ?: "https://buy.998618.xyz"}\"",
+        )
     }
 
     buildTypes {

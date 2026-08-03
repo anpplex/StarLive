@@ -262,6 +262,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyWallpaper() {
+        if (orch.isEffectivelyPlaying()) {
+            orch.applyCurrent("main-apply-deferred")
+            refreshUi()
+            Toast.makeText(this, R.string.toast_apply_deferred, Toast.LENGTH_SHORT).show()
+            return
+        }
         val ok = orch.applyCurrent("main-apply")
         refreshUi()
         Toast.makeText(
@@ -343,7 +349,13 @@ class MainActivity : AppCompatActivity() {
         }
         val idle = WallpaperRepository.idlePrefer(this)
         val showing = orch.showing && orch.display.isAlive()
+        val playing = orch.isEffectivelyPlaying()
         when {
+            playing && idle -> {
+                statusTv.text = getString(R.string.status_yield_playing)
+                statusTv.setTextColor(Color.parseColor("#8BB4E0"))
+                heroSub.text = getString(R.string.hero_yield_playing)
+            }
             !idle -> {
                 statusTv.text = "已让出原厂"
                 statusTv.setTextColor(Color.parseColor("#8B9BB4"))

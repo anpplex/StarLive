@@ -3,13 +3,23 @@ package com.starlive.app.runtime
 import android.app.Application
 import android.util.Log
 import com.starlive.app.display.ClusterDisplayController
+import com.starlive.app.service.KeepAliveService
 import com.starlive.app.wallpaper.WallpaperRepository
 
 /**
- * Single entry for show / release strip. Playing gate lands in Phase 3.
+ * Single entry for show / release strip + play yield + pending apply.
  */
 class StripOrchestrator(private val app: Application) {
     val display = ClusterDisplayController(app)
+
+    private val playbackGate = PlaybackGate { playing ->
+        if (playing) {
+            onYieldPlaying()
+        } else {
+            onResumeAfterPlay()
+        }
+        KeepAliveService.refresh(app)
+    }
 
     @Volatile
     var lastError: String? = null
@@ -18,6 +28,12 @@ class StripOrchestrator(private val app: Application) {
     @Volatile
     var showing: Boolean = false
         private set
+
+    fun isEffectivelyPlaying(): Boolean = playbackGate.isEffectivelyPlaying()
+
+    fun onRawPlaying(playing: Boolean) {
+        playbackGate.setRawPlaying(playing)
+    }
 
     fun applyCurrent(reason: String): Boolean {
         if (!WallpaperRepository.idlePrefer(app)) {
@@ -30,11 +46,18 @@ class StripOrchestrator(private val app: Application) {
             Log.w(TAG, "apply no image ($reason)")
             return false
         }
-        // Phase 3: if playing → pending only
+        if (playbackGate.isEffectivelyPlaying()) {
+            PendingApplyStore.setPending(app, true)
+            lastError = null
+            Log.i(TAG, "apply deferred playing ($reason)")
+            release("playing-yield")
+            return false
+        }
         val ok = display.show(force = true)
         showing = ok
         lastError = if (ok) null else "launch-failed"
-        Log.i(TAG, "applyCurrent ($reason) ok=$ok displays=${display.listDisplaysForProbe()}")
+        if (ok) PendingApplyStore.clear(app)
+        Log.i(TAG, "applyCurrent ($reason) ok=$ok")
         return ok
     }
 
@@ -47,9 +70,33 @@ class StripOrchestrator(private val app: Application) {
     fun setIdlePrefer(value: Boolean) {
         WallpaperRepository.setIdlePrefer(app, value)
         if (value) {
-            applyCurrent("idle-on")
+            KeepAliveService.start(app)
+            if (playbackGate.isEffectivelyPlaying()) {
+                PendingApplyStore.setPending(app, true)
+                release("idle-on-playing")
+            } else {
+                applyCurrent("idle-on")
+            }
         } else {
+            PendingApplyStore.clear(app)
             release("idle-off")
+            KeepAliveService.stop(app)
+        }
+    }
+
+    private fun onYieldPlaying() {
+        if (!WallpaperRepository.idlePrefer(app)) return
+        if (showing || display.isAlive()) {
+            release("play-yield")
+        }
+    }
+
+    private fun onResumeAfterPlay() {
+        if (!WallpaperRepository.idlePrefer(app)) return
+        if (!WallpaperRepository.hasImage(app)) return
+        if (PendingApplyStore.isPending(app) || true) {
+            // Always try re-show after play ends when idle on
+            applyCurrent("after-play")
         }
     }
 

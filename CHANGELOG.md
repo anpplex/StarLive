@@ -10,6 +10,22 @@
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
 - 实车矩阵逐项勾选归档
 
+## [0.1.9-car] — 2026-08-03
+
+### Fixed
+
+- MainActivity CTA `LayoutParams` NPE（车机冷启动崩溃）
+- 主页包 `ScrollView`，车机横屏可滚到「已装 Lyra 时让路」等开关
+
+### Added
+
+- `scripts/install-starlive-car.sh`（华为车机 installer 旁路，与 Lyra 同套路）
+
+### Verified on device
+
+- 车型 ICHU3200E15-ADV · serial LD249H019625
+- 应用上屏：`cluster_panel` displayId=1 · 4032×284 · 左表盘 1042 共存
+
 ## [0.1.8-polish] — 2026-08-03
 
 ### Added

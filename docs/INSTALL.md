@@ -24,6 +24,19 @@ cd android && ./gradlew :app:assembleDebug
 
 原理：临时 disable `packageinstaller`，以 `-i com.huawei.appinstaller.car` 安装到 **user 12**（与 Lyra 相同）。
 
+### 车机 Download 导入说明
+
+当前前台用户多为 **user 12**，`adb push` 到 `/sdcard/Download` 常落在 **user 0**，App 侧可能扫不到。可用：
+
+```bash
+# 写入 user 12 应用目录（调试用）
+adb push wallpaper.jpg /data/local/tmp/starlive_wallpaper.jpg
+adb shell "cat /data/local/tmp/starlive_wallpaper.jpg | run-as com.starlive.app --user 12 sh -c 'cat > files/starlive_wallpaper.jpg'"
+# 然后星澜 → 导入图片 → 从 Download 导入（0.1.10+ 会扫 filesDir）
+```
+
+或把图放到车机 **当前用户** 的 Download（文件管理器复制）。
+
 Release 需自备签名配置（不入库）。
 
 ## 2. adb 安装（USB 调试）

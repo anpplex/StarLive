@@ -33,6 +33,8 @@
 | 主题包格式文档 + `make-theme-pack.sh` | ✅ 见 `docs/THEME-PACK.md` |
 | LicenseHub Admin「星澜兑换」发码 | ✅（LicenseHub 仓） |
 | LicenseHub 兑换码作废 + 生产部署 | ✅ Admin 作废；DEMO 码应废止 |
+| LicenseHub 登记主题包（磁盘 zip → 库表 SHA） | ✅ Admin「登记主题包」 |
+| 兑换后一键应用上屏 | ✅ 0.1.6-redeem |
 | GIF / 视频壁纸 | ❌ 暂缓（产品演进备忘） |
 | ring-wallpaper-core 共享 | ⬜ |
 

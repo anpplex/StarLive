@@ -61,10 +61,10 @@ class UpgradeActivity : AppCompatActivity() {
                 "星澜负责空闲壁纸；Lyra 在播歌时显示特效歌词，并可接管壁纸。\n" +
                     "你的壁纸规格与 Lyra 通用（2990×284）。\n\n" +
                     "步骤：\n" +
-                    "1. 安装 Lyra\n" +
-                    "2. 完成授权并打开「Lyra 总开关」\n" +
-                    "3. 导出壁纸包或保持 Download 中的 starlive/lyra_wallpaper\n" +
-                    "4. （可选）关闭星澜「空闲显示」，避免双开抢屏\n\n" +
+                    "1. 安装 Lyra 并完成授权、打开「Lyra 总开关」\n" +
+                    "2. 在 Lyra「壁纸 → 下载导入」：优先从本机星澜 ContentProvider 直读当前壁纸\n" +
+                    "   （无需再导出也可；导出到 Download 仍可作为兜底）\n" +
+                    "3. （可选）关闭星澜「空闲显示」或开「已装 Lyra 时让路」，避免双开抢屏\n\n" +
                     if (installed) "状态：已检测到本机安装 Lyra。"
                     else "状态：尚未检测到 Lyra（${LyraPresence.LYRA_PACKAGE}）。",
             ),

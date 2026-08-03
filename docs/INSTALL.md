@@ -1,100 +1,65 @@
-# 星澜装机说明（车机 / 开发）
+# 安装说明
 
-## 1. 构建
+## 构建
 
 ```bash
-cd /Users/anpple/Codex/StarLive/android
+cd android
 ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
-# APK → app/build/outputs/apk/debug/app-debug.apk
+# 输出：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-一键构建并安装（手机 / 通用 adb）：
+通用设备：
 
 ```bash
 ./scripts/install-starlive.sh --build --launch
 ```
 
-**阿维塔 / 华为车机**（`adb install` 会 `INSTALL_FAILED_INTERNAL_ERROR` / Hw verifyApp）：
+阿维塔 / 华为车机（直接 `adb install` 可能因厂商校验失败）：
 
 ```bash
 cd android && ./gradlew :app:assembleDebug
-./scripts/install-starlive-car.sh LD249H019625
-# 或 SERIAL=你的序列号 ./scripts/install-starlive-car.sh
+./scripts/install-starlive-car.sh <SERIAL>
 ```
 
-原理：临时 disable `packageinstaller`，以 `-i com.huawei.appinstaller.car` 安装到 **user 12**（与 Lyra 相同）。
+脚本会临时处理安装器限制，并以厂商允许的方式安装到车机前台用户（通常为 user 12）。
 
-### 车机 Download 导入说明
+### Download 导入注意
 
-当前前台用户多为 **user 12**，`adb push` 到 `/sdcard/Download` 常落在 **user 0**，App 侧可能扫不到。可用：
+车机前台用户与 `adb push` 默认用户可能不一致。请将图片放入当前登录用户的 Download，或通过应用内文件选择器导入。
 
-```bash
-# 写入 user 12 应用目录（调试用）
-adb push wallpaper.jpg /data/local/tmp/starlive_wallpaper.jpg
-adb shell "cat /data/local/tmp/starlive_wallpaper.jpg | run-as com.starlive.app --user 12 sh -c 'cat > files/starlive_wallpaper.jpg'"
-# 然后星澜 → 导入图片 → 从 Download 导入（0.1.10+ 会扫 filesDir）
-```
-
-或把图放到车机 **当前用户** 的 Download（文件管理器复制）。
-
-### Release 签名（可选）
+### Release 签名
 
 ```bash
-# 1) 生成 keystore（仅本地，勿提交）
 cd android
-keytool -genkeypair -v -keystore release.keystore -alias starlive \
-  -keyalg RSA -keysize 2048 -validity 10000
-cp keystore.properties.example keystore.properties
-# 编辑 keystore.properties 填入密码
-
-# 2) 构建
+# 配置 keystore.properties（参考 keystore.properties.example，勿提交密钥）
 ../scripts/build-release.sh
-# → android/app/build/outputs/apk/release/app-release.apk
-
-# 3) 挂到 GitHub Release（检查更新可下到包）
-../scripts/publish-github-release.sh v0.1.15-quality
+# 可选：发布到 GitHub Releases
+../scripts/publish-github-release.sh vX.Y.Z
 ```
 
-无 `keystore.properties` 时 `assembleRelease` 产出 **unsigned** APK，仅供自签。
-
-## 2. adb 安装（USB 调试）
-
-```bash
-adb devices
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.starlive.app/.ui.MainActivity
-```
-
-部分车机需先允许「USB 安装」或使用厂商调试桥。
-
-## 3. U 盘 / 文件管理器
-
-1. 将 APK 拷到车机可访问存储  
-2. 用文件管理器打开安装（需允许未知来源）  
-3. 首次打开星澜 → 按提示点「应用当前」  
-
-## 4. 权限建议
+## 权限
 
 | 权限 | 用途 |
 |------|------|
-| 通知使用权 | 播歌让出更准（可选） |
-| 忽略电池优化 | 开机恢复更稳（关于页入口） |
-| 厂商「自启动 / 关联启动」白名单 | **冷启自启必需**；未放行时系统可能根本不投递 BOOT（`boot_probe.log` 为空）。adb `deviceidle whitelist` **不能**替代车机 UI 白名单；**当前产品不承诺无白名单冷启持久化** |
+| 通知使用权 | 更准确判断是否在播放音乐（可选） |
+| 忽略电池优化 / 自启动 | 提高开机后自动恢复成功率 |
 | 存储 / 相册 | 导入壁纸 |
-| 网络 | **仅兑换主题**时需要 |
+| 网络 | 仅兑换主题与检查更新时使用 |
 
-## 5. 与 Lyra 双装
+未加入厂商自启动白名单时，冷启动后可能不会自动恢复星环显示；打开星澜一次即可恢复。
 
-1. 两 App **可并排安装**（不同 applicationId）  
-2. 星澜开「已装 Lyra 时让路」  
-3. Lyra 壁纸 → **下载导入**（优先 ContentProvider）  
+## 与 Lyra 并存
+
+1. 两应用可同时安装（包名不同）  
+2. 在星澜中开启「Lyra 优先」  
+3. 在 Lyra 中导入壁纸（支持读取星澜当前图）  
 4. 详见 [LYRA-UPGRADE.md](./LYRA-UPGRADE.md)  
 
-## 6. 兑换服务
+## 兑换服务
 
-- API 默认：`https://buy.998618.xyz`  
+- 默认 API：`https://buy.998618.xyz`  
 - 覆盖：`./gradlew :app:assembleDebug -PREDEEM_API_BASE=https://host`  
 
-## 7. 卸载
+## 卸载
 
-卸载清除本机壁纸库与 device_id；已绑定的兑换码 **不会** 因卸载自动释放（一码一设备）。  
+卸载会清除本机壁纸库与设备标识。已绑定的兑换码不会因卸载自动释放（一码一设备）。

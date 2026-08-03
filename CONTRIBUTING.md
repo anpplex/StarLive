@@ -1,26 +1,30 @@
-# 参与星澜 StarLive
+# 参与贡献
 
-1. [docs/GIT_WORKFLOW.md](./docs/GIT_WORKFLOW.md) — 分支、提交、PR  
-2. [AGENTS.md](./AGENTS.md) — 目录边界与禁止项  
-3. [docs/LYRA-UPGRADE.md](./docs/LYRA-UPGRADE.md) — 与 Lyra 兼容红线  
+感谢关注星澜。提交代码前请阅读：
+
+- [docs/LYRA-UPGRADE.md](./docs/LYRA-UPGRADE.md) — 与 Lyra 的规格兼容要求  
+- [docs/RING-WALLPAPER-CORE.md](./docs/RING-WALLPAPER-CORE.md) — 几何与裁切约束  
+- [docs/PRODUCT_BOUNDARIES.md](./docs/PRODUCT_BOUNDARIES.md) — 产品边界  
 
 ## 流程
 
-```text
-git checkout main && git pull
-git checkout -b feature/<topic>
-# 修改 android/ 与必要 docs
-cd android && ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
-git commit && git push -u origin HEAD
-# 开 PR → 合并 main
+1. 自 `main` 创建功能分支  
+2. 修改 `android/` 与必要文档  
+3. 本地通过构建与单元测试：
+
+```bash
+cd android
+./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
+./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
 ```
 
-车机装机：`./scripts/install-starlive-car.sh <SERIAL>`  
-验收：`docs/QA-MATRIX.md`
+4. 提交并开启 Pull Request  
+
+车机安装：`./scripts/install-starlive-car.sh <SERIAL>`
 
 ## 约定
 
-- 一条 PR 一类事；Conventional Commits。  
-- 勿提交密钥与 APK 二进制。  
-- 几何 / 裁切 / 软边优先改 `:ring-wallpaper-core`。  
-- 壁纸规格与 Lyra 兼容，勿私创分辨率。
+- 单个 PR 聚焦一类变更；提交信息使用 Conventional Commits  
+- 勿提交密钥、`local.properties`、整包 APK  
+- 几何、裁切、软边优先修改 `:ring-wallpaper-core`  
+- 壁纸规格须与 Lyra 兼容，勿擅自更改分辨率或表盘安全区  

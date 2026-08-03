@@ -7,8 +7,10 @@ class ClusterApplyMessagesTest {
     @Test
     fun c4_no_cluster_copy() {
         val msg = ClusterApplyMessages.noCluster("id=0 name=control_panel")
-        assertTrue(msg.contains("星环屏不可达"))
-        assertTrue(msg.contains("模拟器"))
+        assertTrue(msg.contains("未检测到星环屏"))
+        // Must not leak developer probe strings into user copy.
+        assertTrue(!msg.contains("control_panel"))
+        assertTrue(!msg.contains("cluster", ignoreCase = true))
         assertTrue(ClusterApplyMessages.isNoClusterHint(msg))
     }
 }

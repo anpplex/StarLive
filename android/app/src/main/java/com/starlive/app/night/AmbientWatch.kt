@@ -1,7 +1,9 @@
 package com.starlive.app.night
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -22,6 +24,17 @@ class AmbientWatch(
     private var started = false
     private var lastNightish: Boolean? = null
 
+    private val configCallbacks = object : ComponentCallbacks2 {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            onAmbientMaybeChanged("config-callback")
+            // HU may deliver uiMode before glass resources settle.
+            main.postDelayed({ onAmbientMaybeChanged("config-callback-settle") }, 350L)
+        }
+
+        override fun onLowMemory() {}
+        override fun onTrimMemory(level: Int) {}
+    }
+
     fun nightMode(): RemoteNightMode = nightMode
 
     fun start() {
@@ -33,6 +46,7 @@ class AmbientWatch(
             main.postDelayed({ onAmbientMaybeChanged("secure-observer-settle") }, 400L)
             main.postDelayed({ onAmbientMaybeChanged("secure-observer-settle2") }, 1_200L)
         }
+        runCatching { app.registerComponentCallbacks(configCallbacks) }
         main.postDelayed(pollTick, POLL_MS)
         Log.i(TAG, "AmbientWatch start nightish=$lastNightish snap=${nightMode.debugSnapshot()}")
     }
@@ -52,7 +66,16 @@ class AmbientWatch(
     private val pollTick = object : Runnable {
         override fun run() {
             onAmbientMaybeChanged("poll")
-            main.postDelayed(this, POLL_MS)
+            // Adaptive needs snappier polls — secure stays 9 while effective bit flips.
+            val adaptive = runCatching {
+                val s = android.provider.Settings.Secure.getInt(
+                    app.contentResolver,
+                    "ui_night_mode",
+                    -1,
+                )
+                s == RemoteNightMode.MODE_ADAPTIVE || s == RemoteNightMode.MODE_AOSP_AUTO
+            }.getOrDefault(true)
+            main.postDelayed(this, if (adaptive) POLL_MS_ADAPTIVE else POLL_MS)
         }
     }
 
@@ -66,6 +89,8 @@ class AmbientWatch(
             "ambient flip ($reason) ${if (prev == true) "night" else "day"} → " +
                 "${if (now) "night" else "day"} ${debugSnapshot()}",
         )
+        // Drop cached edge bake so glass/feather match the new effective bit.
+        WallpaperRepository.invalidateStripCache()
         // Demo dual assets follow remote/system night.
         val id = WallpaperRepository.activeId(app)
         if (id != "custom" && !id.startsWith("lib:")) {
@@ -88,5 +113,6 @@ class AmbientWatch(
     companion object {
         private const val TAG = "StarLive"
         private const val POLL_MS = 2_000L
+        private const val POLL_MS_ADAPTIVE = 800L
     }
 }

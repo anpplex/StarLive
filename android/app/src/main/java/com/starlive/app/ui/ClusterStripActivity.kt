@@ -32,6 +32,8 @@ import com.starlive.ring.StripGeometry
  */
 class ClusterStripActivity : AppCompatActivity() {
     private var root: FrameLayout? = null
+    /** Full-strip glass (incl. left gauge) — must match day/night dissolve, never leave black void. */
+    private var glassBase: View? = null
     private var wallpaperPlate: View? = null
     private var wallpaperA: ImageView? = null
     private var wallpaperB: ImageView? = null
@@ -53,20 +55,30 @@ class ClusterStripActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        window.statusBarColor = Color.BLACK
-        window.navigationBarColor = Color.BLACK
+        // Match initial glass; reloadWallpaper updates to day/night.
+        val initialGlass = if (WallpaperRepository.isNightish(this)) {
+            StripGeometry.GLASS_NIGHT
+        } else {
+            StripGeometry.GLASS_DAY
+        }
+        window.statusBarColor = initialGlass
+        window.navigationBarColor = initialGlass
 
         val strip = FrameLayout(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
+            setBackgroundColor(initialGlass)
             layoutParams = FrameLayout.LayoutParams(
                 StripGeometry.STRIP_W,
                 StripGeometry.STRIP_H,
             )
         }
-        // Left gauge reserve — transparent so OEM instrument glass shows through.
+        // Full-width glass under everything. StarLive owns the private cluster
+        // display — transparent left was showing pure black and desynced from
+        // system 浅色/深色 base_map at the wallpaper junction.
+        val base = View(this).apply { setBackgroundColor(initialGlass) }
+        glassBase = base
         strip.addView(
-            View(this).apply { setBackgroundColor(Color.TRANSPARENT) },
-            FrameLayout.LayoutParams(StripGeometry.GAUGE_RESERVE, StripGeometry.STRIP_H),
+            base,
+            FrameLayout.LayoutParams(StripGeometry.STRIP_W, StripGeometry.STRIP_H),
         )
 
         val bandLp = FrameLayout.LayoutParams(
@@ -76,7 +88,7 @@ class ClusterStripActivity : AppCompatActivity() {
 
         // Opaque glass under art — dissolve is baked into the bitmap (Lyra Option A).
         val plate = View(this).apply {
-            setBackgroundColor(StripGeometry.GLASS_DAY)
+            setBackgroundColor(initialGlass)
         }
         wallpaperPlate = plate
         strip.addView(plate, FrameLayout.LayoutParams(bandLp))
@@ -138,6 +150,16 @@ class ClusterStripActivity : AppCompatActivity() {
     private fun front(): ImageView? = if (frontIsA) wallpaperA else wallpaperB
     private fun back(): ImageView? = if (frontIsA) wallpaperB else wallpaperA
 
+    /** Keep full strip + plate + chrome on the same base_map as the baked dissolve. */
+    private fun applyGlassColor(night: Boolean) {
+        val glass = if (night) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
+        glassBase?.setBackgroundColor(glass)
+        wallpaperPlate?.setBackgroundColor(glass)
+        root?.setBackgroundColor(glass)
+        window.statusBarColor = glass
+        window.navigationBarColor = glass
+    }
+
     private fun reloadWallpaper(animated: Boolean) {
         if (crossfadeRunning) {
             pendingReload = true
@@ -148,9 +170,9 @@ class ClusterStripActivity : AppCompatActivity() {
             Log.w(TAG, "reloadWallpaper no bitmap night=$night")
             return
         }
-        val glass = if (night) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
-        wallpaperPlate?.setBackgroundColor(glass)
+        applyGlassColor(night)
 
+        val glass = if (night) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
         val snap = (application as? StarLiveApp)?.ambientWatch?.debugSnapshot().orEmpty()
         Log.i(
             TAG,

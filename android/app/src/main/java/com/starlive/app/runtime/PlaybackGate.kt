@@ -6,7 +6,7 @@ import android.os.SystemClock
 import android.util.Log
 
 /**
- * Playing detection with pause grace 8s and gap 3s (INTERACTION-1.0).
+ * Playing detection with pause grace 8s and gap 3s.
  * [rawPlaying] comes from MediaSession; [isEffectivelyPlaying] drives yield.
  *
  * Injectable [clockMs] / [scheduler] for JVM unit tests (M3 切歌空隙).

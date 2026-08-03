@@ -2,13 +2,18 @@ package com.starlive.app.display
 
 /**
  * User-facing copy when cluster apply fails (C4 emulator / no strip). Pure, unit-testable.
+ * Probe details stay in logs only — never surface raw display dumps to UI.
  */
 object ClusterApplyMessages {
-    fun noCluster(probe: String): String =
-        "星环屏不可达（模拟器/无 cluster 时常见）· $probe"
+    fun noCluster(probe: String): String {
+        // Keep probe param for call-site compatibility; do not put it in UI copy.
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = probe
+        return "当前设备未检测到星环屏"
+    }
 
-    fun launchFailed(): String = "无法上屏 · 请确认星环 Display 可用"
+    fun launchFailed(): String = "无法显示到星环，请稍后重试"
 
     fun isNoClusterHint(message: String): Boolean =
-        message.contains("星环屏不可达") || message.contains("cluster", ignoreCase = true)
+        message.contains("未检测到星环屏") || message.contains("星环屏不可达")
 }

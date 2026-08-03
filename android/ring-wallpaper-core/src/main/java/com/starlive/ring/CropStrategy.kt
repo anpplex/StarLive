@@ -28,9 +28,9 @@ object CropStrategy {
     }
 
     fun labelZh(strategy: Strategy): String = when (strategy) {
-        Strategy.EXACT -> "尺寸匹配 · 将裁为 2990×284"
-        Strategy.BAND -> "将按星环右带（跳过表盘区）裁切为 2990×284"
-        Strategy.CENTER -> "将居中裁切为 2990×284"
+        Strategy.EXACT -> "尺寸匹配 · 缩放为 2990×284"
+        Strategy.BAND -> "裁取右侧壁纸区 · 2990×284"
+        Strategy.CENTER -> "居中裁切 · 2990×284"
     }
 
     /** Decode bounds too small / corrupt for wallpaper. */

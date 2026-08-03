@@ -1,22 +1,28 @@
 {
   "wallpapers": [
     {
-      "id": "minimal",
-      "label": "简约",
-      "dark": "demo_minimal_dark.jpg",
-      "light": "demo_minimal_light.jpg"
+      "id": "beauty",
+      "label": "Beauty",
+      "dark": "demo_beauty_dark.jpg",
+      "light": "demo_beauty_light.jpg"
     },
     {
-      "id": "atmosphere",
-      "label": "氛围",
-      "dark": "demo_atmosphere_dark.jpg",
-      "light": "demo_atmosphere_light.jpg"
+      "id": "snowking",
+      "label": "SnowKing",
+      "dark": "demo_snowking_dark.jpg",
+      "light": "demo_snowking_light.jpg"
     },
     {
-      "id": "abstract",
-      "label": "抽象",
-      "dark": "demo_abstract_dark.jpg",
-      "light": "demo_abstract_light.jpg"
+      "id": "sanrio",
+      "label": "Sanrio",
+      "dark": "demo_sanrio_dark.jpg",
+      "light": "demo_sanrio_light.jpg"
+    },
+    {
+      "id": "metro",
+      "label": "Metro",
+      "dark": "demo_metro_dark.jpg",
+      "light": "demo_metro_light.jpg"
     }
   ]
 }

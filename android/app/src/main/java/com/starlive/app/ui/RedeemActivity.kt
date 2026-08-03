@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
+import com.starlive.app.R
 import com.starlive.app.StarLiveApp
 import com.starlive.app.device.DeviceIdentity
 import com.starlive.app.redeem.RedeemClient
@@ -35,7 +36,7 @@ class RedeemActivity : AppCompatActivity() {
         col.addView(
             UiKit.caption(
                 this,
-                "一码一设备 · 同设备可重复兑换取下载\n服务 ${BuildConfig.REDEEM_API_BASE}",
+                "一码一设备，同设备可重复兑换下载；需要联网",
             ).also { it.setPadding(0, dp(8), 0, dp(14)) },
         )
 
@@ -56,7 +57,7 @@ class RedeemActivity : AppCompatActivity() {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(0, dp(12), 0, dp(4))
             setLineSpacing(0f, 1.2f)
-            text = "兑换成功后可直接应用到星环"
+            text = "兑换成功后可立即应用到星环"
         }
         card.addView(status)
         col.addView(card)
@@ -68,7 +69,7 @@ class RedeemActivity : AppCompatActivity() {
             ).apply { topMargin = dp(14) }
         }
         col.addView(btn)
-        applyBtn = UiKit.secondaryButton(this, "应用上屏") {
+        applyBtn = UiKit.secondaryButton(this, getString(R.string.btn_apply)) {
             applyToCluster()
         }.also {
             it.isEnabled = false
@@ -136,7 +137,7 @@ class RedeemActivity : AppCompatActivity() {
                     install.onSuccess { r ->
                         status.setTextColor(UiTokens.success)
                         val bound = if (ok.alreadyBound) "（本机已绑定）" else ""
-                        status.text = "已安装「${r.title}」共 ${r.count} 张$bound · 可点下方应用上屏"
+                        status.text = "已安装「${r.title}」（${r.count} 张）$bound。可点下方应用到星环"
                         applyBtn.isEnabled = true
                         Toast.makeText(this, "兑换成功", Toast.LENGTH_SHORT).show()
                     }.onFailure { e ->
@@ -161,13 +162,17 @@ class RedeemActivity : AppCompatActivity() {
         val orch = (application as StarLiveApp).orchestrator
         if (orch.isEffectivelyPlaying()) {
             orch.applyCurrent("redeem-apply-deferred")
-            Toast.makeText(this, "播歌中 · 停播后生效", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_apply_deferred), Toast.LENGTH_SHORT).show()
             return
         }
         val ok = orch.applyCurrent("redeem-apply")
         Toast.makeText(
             this,
-            if (ok) "已应用到星环" else "已保存 · 若未上屏请检查星环 Display",
+            if (ok) {
+                getString(R.string.toast_applied)
+            } else {
+                "已保存到图库。若未显示，请再次点「应用到星环」"
+            },
             Toast.LENGTH_SHORT,
         ).show()
     }

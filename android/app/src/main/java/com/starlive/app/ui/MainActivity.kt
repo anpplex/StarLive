@@ -107,12 +107,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(24), dp(16), dp(24), dp(24))
         }
 
-        // 1) Header  2) Hero  3) 选择壁纸（最高频）  4) 唯一主 CTA
+        // 1) Header  2) Hero  3) 应用上屏（紧贴预览）  4) 选择壁纸库
         root.addView(buildTopBar())
         root.addView(buildHeroCard())
+        root.addView(buildPrimaryApply())
         root.addView(buildPickHeader())
         root.addView(buildLibraryCard())
-        root.addView(buildPrimaryApply())
 
         if (!WallpaperRepository.firstRunHintShown(this)) {
             Toast.makeText(this, R.string.first_run_hint, Toast.LENGTH_LONG).show()
@@ -174,35 +174,29 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { topMargin = dp(10) }
-        // Taller strip preview — primary visual anchor (HMI-style)
-        val heroH = dp(88)
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        // Full wallpaper band only (no left gauge). Aspect = 2990×284.
+        val contentW = resources.displayMetrics.widthPixels - dp(48)
+        val heroH = (contentW * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W)
+            .coerceIn(dp(64), dp(120))
+        preview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 heroH,
             )
             applyRoundedBg(UiTokens.heroBg, 14f, UiTokens.stroke)
-        }
-        val gaugeW = (heroH * StripGeometry.GAUGE_RESERVE / StripGeometry.STRIP_H).coerceAtLeast(dp(28))
-        hero.addView(
-            TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(gaugeW, heroH)
-                applyRoundedBg(UiTokens.gaugeBg, 0f)
-                text = "表盘"
-                gravity = Gravity.CENTER
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-            },
-        )
-        preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
-            layoutParams = LinearLayout.LayoutParams(0, heroH, 1f)
             contentDescription = "星环预览，点按应用上屏"
             setOnClickListener { applyWallpaper() }
+            // Match strip band corners via clip
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    val r = 14f * resources.displayMetrics.density
+                    outline.setRoundRect(0, 0, view.width, view.height, r)
+                }
+            }
         }
-        hero.addView(preview)
-        card.addView(hero)
+        card.addView(preview)
 
         heroSub = TextView(this).apply {
             setTextColor(UiTokens.textSecondary)
@@ -251,13 +245,17 @@ class MainActivity : AppCompatActivity() {
             it.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(16) }
+            ).apply { topMargin = dp(12) }
             it.minHeight = dp(52)
             it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         }
 
     private fun buildLibraryCard(): LinearLayout {
         val card = UiKit.card(this)
+        card.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
         card.addView(
             TextView(this).apply {
                 text = "示范"
@@ -268,11 +266,13 @@ class MainActivity : AppCompatActivity() {
         )
         demoHost = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(8), 0, dp(4))
+            setPadding(0, dp(10), 0, dp(4))
         }
         card.addView(
             HorizontalScrollView(this).apply {
                 isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+                isFillViewport = false
                 addView(demoHost)
             },
         )
@@ -280,16 +280,16 @@ class MainActivity : AppCompatActivity() {
 
         card.addView(
             TextView(this).apply {
-                text = "我的库 · 点选预览 · 长按删除"
+                text = "我的库 · 左右滑动 · 长按删除"
                 setTextColor(UiTokens.textMuted)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                setPadding(0, dp(14), 0, 0)
+                setPadding(0, dp(16), 0, 0)
             },
         )
         libraryHost = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(8), 0, 0)
+            setPadding(0, dp(10), 0, 0)
         }
         card.addView(libraryHost)
         rebuildLibraryRail()
@@ -297,7 +297,7 @@ class MainActivity : AppCompatActivity() {
         val sourceRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, 0)
+            setPadding(0, dp(12), 0, 0)
         }
         sourceRow.addView(
             TextView(this).apply {
@@ -312,7 +312,10 @@ class MainActivity : AppCompatActivity() {
         return card
     }
 
-    /** Vertical thumb + label chip for content rail (HMI media style). */
+    /**
+     * Strip thumbnail card: wide preview + short label.
+     * Aspect close to wallpaper band so crop looks correct when sliding.
+     */
     private fun thumbChip(
         label: String,
         selected: Boolean,
@@ -320,21 +323,22 @@ class MainActivity : AppCompatActivity() {
         onClick: () -> Unit,
         onLongClick: (() -> Boolean)? = null,
     ): LinearLayout {
-        val w = dp(112)
-        val h = dp(48)
+        // ~2.8:1 visual strip, large enough for car touch + glance
+        val w = dp(176)
+        val h = dp(64)
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = dp(10) }
+            ).apply { marginEnd = dp(12) }
             applyRoundedBg(
                 if (selected) UiTokens.surface3 else UiTokens.surface2,
-                14f,
+                12f,
                 if (selected) UiTokens.accent else UiTokens.stroke,
             )
-            setPadding(dp(6), dp(6), dp(6), dp(8))
+            setPadding(dp(5), dp(5), dp(5), dp(6))
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
@@ -349,6 +353,12 @@ class MainActivity : AppCompatActivity() {
                 applyRoundedBg(UiTokens.heroBg, 8f)
                 if (thumb != null) setImageBitmap(thumb)
                 clipToOutline = true
+                outlineProvider = object : android.view.ViewOutlineProvider() {
+                    override fun getOutline(view: View, outline: android.graphics.Outline) {
+                        val r = 8f * resources.displayMetrics.density
+                        outline.setRoundRect(0, 0, view.width, view.height, r)
+                    }
+                }
             },
         )
         col.addView(
@@ -362,7 +372,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Typeface.DEFAULT
                 }
-                setPadding(0, dp(6), 0, 0)
+                setPadding(0, dp(5), 0, 0)
                 maxLines = 1
             },
         )
@@ -374,7 +384,10 @@ class MainActivity : AppCompatActivity() {
             val asset = demo.assetFor(WallpaperRepository.isNightish(this))
             assets.open(asset).use { input ->
                 val raw = BitmapFactory.decodeStream(input) ?: return@runCatching null
-                Bitmap.createScaledBitmap(raw, 224, 48, true).also {
+                // Keep strip proportions for thumb decode
+                val tw = 352
+                val th = (tw * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W).coerceAtLeast(32)
+                Bitmap.createScaledBitmap(raw, tw, th, true).also {
                     if (it !== raw) raw.recycle()
                 }
             }
@@ -385,9 +398,11 @@ class MainActivity : AppCompatActivity() {
         return runCatching {
             val f = item.file(this)
             if (!f.isFile) return@runCatching null
-            val opts = BitmapFactory.Options().apply { inSampleSize = 8 }
+            val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
             val raw = BitmapFactory.decodeFile(f.absolutePath, opts) ?: return@runCatching null
-            Bitmap.createScaledBitmap(raw, 224, 48, true).also {
+            val tw = 352
+            val th = (tw * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W).coerceAtLeast(32)
+            Bitmap.createScaledBitmap(raw, tw, th, true).also {
                 if (it !== raw) raw.recycle()
             }
         }.getOrNull()

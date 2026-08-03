@@ -44,6 +44,19 @@ jobs:
       - name: Grant gradlew
         run: chmod +x android/gradlew android/gradlew.bat
 
+      # IP boundary: no Lyra commercial core (package name queries for dual-install OK)
+      - name: Boundary check (no Lyra core leak)
+        working-directory: android
+        run: |
+          set -e
+          # Forbidden: License / lyrics / effect stacks. Allowed: com.lyra.cluster package string for queries.
+          if grep -RInE 'LUMINA1|license_public_key|VehicleLogcat|MineradioWeb|FoliaWeb|SaltWeb|BetterLyrics|import com\.lyra\.cluster\.(effect|lyrics|license|music|renderer)' \
+            app/src ring-wallpaper-core/src --include='*.kt' --include='*.xml' --include='*.json'; then
+            echo "Boundary violation: Lyra commercial markers found in StarLive sources" >&2
+            exit 1
+          fi
+          echo "Boundary OK"
+
       - name: Unit tests
         working-directory: android
         env:

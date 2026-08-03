@@ -1,10 +1,12 @@
 package com.starlive.app.wallpaper
 
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
@@ -13,6 +15,7 @@ import com.starlive.ring.StripGeometry
 import com.starlive.ring.WallpaperEdgeSoftener
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 
 /**
@@ -309,34 +312,141 @@ object WallpaperRepository {
             ensureSeeded(context)
             val active = activeFile(context)
             if (!active.isFile) return false
-            val starliveDir = File("/storage/emulated/0/Download/StarLive")
-            starliveDir.mkdirs()
-            val downloadRoot = File("/storage/emulated/0/Download")
-            downloadRoot.mkdirs()
-            active.copyTo(File(starliveDir, "active_wallpaper.jpg"), overwrite = true)
-            active.copyTo(File(starliveDir, "starlive_wallpaper.jpg"), overwrite = true)
-            active.copyTo(File(starliveDir, "lyra_wallpaper.jpg"), overwrite = true)
-            active.copyTo(File(downloadRoot, "starlive_wallpaper.jpg"), overwrite = true)
-            active.copyTo(File(downloadRoot, "lyra_wallpaper.jpg"), overwrite = true)
-            val files = JSONObject()
+            val filesMeta = JSONObject()
                 .put("active", "active_wallpaper.jpg")
                 .put("lyra_wallpaper", "lyra_wallpaper.jpg")
                 .put("starlive_wallpaper", "starlive_wallpaper.jpg")
-            val json = JSONObject()
+            val handoffJson = JSONObject()
                 .put("format", "starlive-handoff/v1")
                 .put("activeId", activeId(context))
                 .put("idlePrefer", idlePrefer(context))
                 .put("nightMode", nightMode(context))
                 .put("starliveVersion", versionName)
                 .put("contentProvider", "content://com.starlive.app.handoff/active")
-                .put("files", files)
+                .put("files", filesMeta)
                 .toString(2) + "\n"
-            File(starliveDir, "handoff.json").writeText(json)
-            true
+
+            var wrote = 0
+            // 1) App-scoped external (always writable; Lyra cannot read, but we keep for debug)
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.let { ext ->
+                runCatching {
+                    val dir = File(ext, "StarLive").also { it.mkdirs() }
+                    writeHandoffBundle(active, dir, handoffJson)
+                    wrote++
+                    Log.i(TAG, "exportHandoff app-external ${dir.absolutePath}")
+                }
+            }
+            // 2) Public Download via MediaStore (cross-app visible on multi-user HUs)
+            if (publishJpegToDownloads(context, active, "starlive_wallpaper.jpg")) wrote++
+            if (publishJpegToDownloads(context, active, "lyra_wallpaper.jpg")) wrote++
+            if (publishJpegToDownloads(context, active, "StarLive/active_wallpaper.jpg")) wrote++
+            // handoff.json as download document when possible
+            if (publishTextToDownloads(context, handoffJson, "StarLive/handoff.json", "application/json")) {
+                wrote++
+            }
+            // 3) Best-effort legacy direct paths (may fail without WRITE on API 29+)
+            for (root in listOf(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                File("/storage/emulated/0/Download"),
+            )) {
+                runCatching {
+                    val dir = File(root, "StarLive").also { it.mkdirs() }
+                    writeHandoffBundle(active, dir, handoffJson)
+                    active.copyTo(File(root, "starlive_wallpaper.jpg"), overwrite = true)
+                    wrote++
+                }
+            }
+            wrote > 0
         } catch (e: Exception) {
             Log.w(TAG, "exportHandoff failed", e)
             false
         }
+    }
+
+    private fun writeHandoffBundle(active: File, starliveDir: File, handoffJson: String) {
+        active.copyTo(File(starliveDir, "active_wallpaper.jpg"), overwrite = true)
+        active.copyTo(File(starliveDir, "starlive_wallpaper.jpg"), overwrite = true)
+        active.copyTo(File(starliveDir, "lyra_wallpaper.jpg"), overwrite = true)
+        File(starliveDir, "handoff.json").writeText(handoffJson)
+    }
+
+    private fun publishJpegToDownloads(context: Context, src: File, relativeName: String): Boolean {
+        return publishFileToDownloads(context, src, relativeName, "image/jpeg")
+    }
+
+    private fun publishTextToDownloads(
+        context: Context,
+        text: String,
+        relativeName: String,
+        mime: String,
+    ): Boolean {
+        val tmp = File(context.cacheDir, "export_${relativeName.replace('/', '_')}")
+        return runCatching {
+            tmp.writeText(text)
+            publishFileToDownloads(context, tmp, relativeName, mime)
+        }.getOrDefault(false).also { tmp.delete() }
+    }
+
+    private fun publishFileToDownloads(
+        context: Context,
+        src: File,
+        relativeName: String,
+        mime: String,
+    ): Boolean {
+        if (!src.isFile) return false
+        return runCatching {
+            val pureName = relativeName.substringAfterLast('/')
+            val subPath = relativeName.substringBeforeLast('/', missingDelimiterValue = "")
+            val relativePath = if (subPath.isBlank()) {
+                Environment.DIRECTORY_DOWNLOADS + "/"
+            } else {
+                Environment.DIRECTORY_DOWNLOADS + "/" + subPath + "/"
+            }
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, pureName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                if (Build.VERSION.SDK_INT >= 29) {
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            }
+            val collection = if (Build.VERSION.SDK_INT >= 29) {
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            } else {
+                MediaStore.Files.getContentUri("external")
+            }
+            // Replace existing same name under Downloads/StarLive when possible
+            if (Build.VERSION.SDK_INT >= 29) {
+                context.contentResolver.query(
+                    collection,
+                    arrayOf(MediaStore.MediaColumns._ID),
+                    "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?",
+                    arrayOf(pureName, relativePath),
+                    null,
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getLong(0)
+                        context.contentResolver.delete(
+                            ContentUris.withAppendedId(collection, id),
+                            null,
+                            null,
+                        )
+                    }
+                }
+            }
+            val uri = context.contentResolver.insert(collection, values)
+                ?: return@runCatching false
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                FileInputStream(src).use { input -> input.copyTo(out) }
+            } ?: return@runCatching false
+            if (Build.VERSION.SDK_INT >= 29) {
+                values.clear()
+                values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                context.contentResolver.update(uri, values, null, null)
+            }
+            Log.i(TAG, "export MediaStore $relativeName -> $uri")
+            true
+        }.onFailure { Log.w(TAG, "export MediaStore failed $relativeName", it) }.getOrDefault(false)
     }
 
     fun decodeActiveForStrip(context: Context, nightish: Boolean): Bitmap? {

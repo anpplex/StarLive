@@ -7,7 +7,7 @@
 ### Planned
 
 - 在线主题商店（非兑换码路径）
-- QA 剩余 ⬜：I1 相册 · M3 实车切歌 · L3–L4 UI（需车机 / 人工）
+- QA 剩余 ⬜：I1 相册 · M3 实车切歌（需人工）
 
 ### Known limitations
 
@@ -15,6 +15,22 @@
   多次 `adb reboot` 仍无 `boot_probe.log` → BOOT 未投递。  
   **0.1.13+ 补偿**：进程启动自动 recover；**0.1.14** process-start 首跳约 0.4s。  
   见 `docs/QA-MATRIX.md` §B1。
+- 车机 **NLS 可能被 iaware 拦截**（`Service starting has been prevented`）；播歌让出依赖 `AudioManager.isMusicActive` 兜底。
+
+## [0.1.17-car] — 2026-08-03
+
+### Fixed / Added
+
+- handoff 导出：多路径写 Download（当前用户 `Environment` + 兼容 emulated/0），减轻多用户车机 Lyra 扫不到
+- Main 恢复时再拉 KeepAlive（部分 HU 拦 Application 起 FGS）
+- CI：Lyra 核心代码边界 grep（防误拷特效/License）
+
+### Verified on device (LD249H019625 · 0.1.16→0.1.17)
+
+- **C2** 空闲关 → KeepAlive 停、Cluster 释放 ✅  
+- **R2** `K4CAR4BH` 再兑 →「已安装…」幂等成功 ✅  
+- **L2** handoff meta 可读 · version 0.1.16-polish ✅  
+- **B4** 播歌中 process-start 正确跳过（胶囊「播歌中」）；空闲开 + 未播歌路径需 process-start + 应用  
 
 ## [0.1.16-polish] — 2026-08-03
 

@@ -8,14 +8,28 @@
 
 - 在线主题商店（非兑换码路径）
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
-- QA 剩余 ⬜：I1/I3–I5 · M3 · R2–R4/R6 · L3–L4（需人工 / 第二设备）
+- QA 剩余 ⬜：I1 相册 · M3 切歌 · R2–R4/R6 · L3–L4（人工 / 第二设备）
 
 ### Known limitations
 
 - **冷启开机自启无法持久化（无厂商 UI 白名单）**  
   多次 `adb reboot` 仍无 `boot_probe.log` → BOOT 未投递。  
-  **0.1.13+ 补偿**：进程启动（打开 App / 杀进程后再开）走同一 recover 调度，约 2.5s 内自动上屏。  
+  **0.1.13+ 补偿**：进程启动自动 recover；**0.1.14** process-start 首跳约 0.4s。  
   见 `docs/QA-MATRIX.md` §B1。
+
+## [0.1.14-car] — 2026-08-03
+
+### Added
+
+- `CropStrategy` 纯尺寸策略 + JUnit（I3 EXACT / I4 BAND / CENTER / 非法 bounds）
+- CI：`:ring-wallpaper-core:testDebugUnitTest`
+- process-start recover 首跳 **400ms**（BOOT 仍用 2.5/8/20s）
+
+### Verified on device (LD249H019625)
+
+- **I4** 2990×284 → 确认页「尺寸匹配」→ 应用 ✅  
+- **I3** 4032×284 → 「右带 / 跳过表盘」→ 应用 ✅  
+- **I5** 损坏图 → 无法读取、回主页、不崩 ✅  
 
 ## [0.1.13-car] — 2026-08-03
 

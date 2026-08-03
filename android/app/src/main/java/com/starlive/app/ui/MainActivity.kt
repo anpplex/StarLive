@@ -478,7 +478,8 @@ class MainActivity : AppCompatActivity() {
         rebuildLibraryRail()
         refreshUi()
         maybeSoftHints()
-        // process-start recover applies at 2.5s — refresh again so capsule is not stuck on 未上屏
+        // process-start recover first tick ~0.4s — refresh capsule after apply
+        statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 900L)
         statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
     }
 

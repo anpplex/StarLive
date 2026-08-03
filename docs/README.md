@@ -20,6 +20,7 @@
 | [QA-MATRIX.md](./QA-MATRIX.md) | 实车 / 发版验收矩阵 | 已定 |
 | [CUSTOM-SOP.md](./CUSTOM-SOP.md) | 私人定制履约 SOP | 已定 |
 | [INSTALL.md](./INSTALL.md) | 装机与权限 | 已定 |
-| [../.github/workflows/android.yml](../.github/workflows/android.yml) | CI assembleDebug | 已定 |
+| [../.github/workflows/android.yml](../.github/workflows/android.yml) | CI assembleDebug + unitTest | 已定 |
+| [../CHANGELOG.md](../CHANGELOG.md) | 版本变更 | 持续 |
 
 根目录：[README](../README.md) · [AGENTS](../AGENTS.md) · [CONTRIBUTING](../CONTRIBUTING.md) · [LICENSE](../LICENSE)

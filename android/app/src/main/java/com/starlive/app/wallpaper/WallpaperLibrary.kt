@@ -3,8 +3,6 @@ package com.starlive.app.wallpaper
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 
@@ -29,16 +27,8 @@ object WallpaperLibrary {
         val f = File(dir(context), INDEX)
         if (!f.isFile) return emptyList()
         return runCatching {
-            val arr = JSONArray(f.readText())
-            buildList {
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-                    val id = o.getString("id")
-                    val name = o.getString("file")
-                    if (File(dir(context), name).isFile) {
-                        add(Item(id, o.optString("label", id), name))
-                    }
-                }
+            LibraryIndexCodec.decode(f.readText()).filter { item ->
+                File(dir(context), item.fileName).isFile
             }
         }.onFailure { Log.w(TAG, "library list failed", it) }.getOrDefault(emptyList())
     }
@@ -91,26 +81,21 @@ object WallpaperLibrary {
         val removed = items.removeAt(idx)
         removed.file(context).delete()
         writeIndex(context, items)
-        // if active was this, keep active file as-is (user can switch)
+        // If deleted was active: fall back to first remaining lib item or demo
         val active = WallpaperRepository.activeId(context)
         if (active == "lib:$id" || active == id) {
-            WallpaperRepository.prefs(context).edit()
-                .putString("active_id", "custom")
-                .apply()
+            val next = items.firstOrNull()
+            if (next != null) {
+                apply(context, next.id)
+            } else {
+                WallpaperRepository.restoreDemo(context)
+            }
         }
         return true
     }
 
     private fun writeIndex(context: Context, items: List<Item>) {
-        val arr = JSONArray()
-        items.forEach { item ->
-            arr.put(
-                JSONObject()
-                    .put("id", item.id)
-                    .put("label", item.label)
-                    .put("file", item.fileName),
-            )
-        }
-        File(dir(context), INDEX).writeText(arr.toString())
+        File(dir(context), INDEX).writeText(LibraryIndexCodec.encode(items))
     }
 }
+

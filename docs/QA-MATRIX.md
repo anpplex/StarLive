@@ -36,7 +36,7 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 | C1 | 首启 → 点「应用当前」 | 星环出现示范壁纸；预览与星环一致 | ✅ 0.1.9–0.1.11 cluster displayId=1 · 4032×284 |
 | C2 | 关「空闲显示」 | 让出原厂星环；可停 FGS | ✅ 0.1.11 |
 | C3 | 再开「空闲显示」→ 应用 | 壁纸恢复上屏 | ✅ 0.1.11 |
-| C4 | 模拟器 / 无 cluster Display | 「无法上屏」人话；不 ANR | ⬜ 需模拟器（实车有 cluster） |
+| C4 | 模拟器 / 无 cluster Display | 「无法上屏」人话；不 ANR | ⚠️ 文案单测 ✅（`ClusterApplyMessages`）；实机模拟器 ⬜ |
 | C5 | 日夜：自动 / 深 / 浅 | 双图 demo 切换合理；单图通吃 | ✅ 0.1.13 prefs dark/light/auto |
 
 ---
@@ -50,7 +50,8 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 | I3 | 4032×284 全条图 | 右带裁切（跳过表盘 1042） | ✅ 0.1.14 确认页「右带」+ unit BAND |
 | I4 | 2990×284 精确图 | EXACT 策略 | ✅ 0.1.14 确认页「尺寸匹配」+ unit EXACT |
 | I5 | 损坏 / 极小图 | 失败提示；不崩 | ✅ 0.1.14 损坏 → 回主页不崩；unit 非法 bounds |
-| I6 | 多图库切换 / 长按删除 | 切换生效；删后列表更新 | ✅ 0.1.13 点「夜色」→ active lib；长按删 ⬜ |
+| I6 | 多图库切换 / 长按删除 | 切换生效；删后列表更新 | ✅ 0.1.13 切换；长按删有确认（0.1.16 删 active→下一张/示范） |
+
 | I7 | 恢复示范 | 回到 demo；可再应用 | ✅ 0.1.13 → active_id=minimal |
 
 ---

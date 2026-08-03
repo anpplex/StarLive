@@ -16,6 +16,9 @@
 | [AUDIT-DEV-DOCS.md](./AUDIT-DEV-DOCS.md) | 开发文档缺口审计 | 归档参考 |
 | [SECURITY-REDEEM-CODES.md](./SECURITY-REDEEM-CODES.md) | 主题兑换码安全架构 | 设计 |
 | [THEME-PACK.md](./THEME-PACK.md) | 主题包 zip / catalog 格式 | 已定 |
-| [RING-WALLPAPER-CORE.md](./RING-WALLPAPER-CORE.md) | 共享几何/裁切模块 | 进行中 |
+| [RING-WALLPAPER-CORE.md](./RING-WALLPAPER-CORE.md) | 共享几何/裁切模块 | 已定 |
+| [QA-MATRIX.md](./QA-MATRIX.md) | 实车 / 发版验收矩阵 | 已定 |
+| [CUSTOM-SOP.md](./CUSTOM-SOP.md) | 私人定制履约 SOP | 已定 |
+| [INSTALL.md](./INSTALL.md) | 装机与权限 | 已定 |
 
 根目录：[README](../README.md) · [AGENTS](../AGENTS.md) · [CONTRIBUTING](../CONTRIBUTING.md) · [LICENSE](../LICENSE)

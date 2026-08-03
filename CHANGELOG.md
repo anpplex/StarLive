@@ -17,6 +17,13 @@
 - 日夜 ambient 刷新时重建「自动·浅/深」chip 与示范轨
 - 导入优先 **SAF OpenDocument**（车机多用户更稳），失败回落 GetContent
 
+### Verified on device (LD249H019625)
+
+- **M1** `com.huawei.music.auto` 播歌 → 胶囊让出 · 无 ClusterStrip
+- **M1b** Wallpaper Engine 不挡上屏（0.1.22）
+- **A2** `ui_night_mode` 翻转 ambient
+- **I2** Download 导入确认入库
+
 ## [0.1.23-preview] — 2026-08-03
 
 ### UX

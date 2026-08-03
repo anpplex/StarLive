@@ -60,7 +60,7 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 
 | # | 场景 | 期望 | 结果 |
 |---|------|------|------|
-| M1 | 空闲开 + 播歌 | 让出星环；通知可提示让出 | ✅ 0.1.11 网易云；**真音乐**回归 ⬜（需人工播歌） |
+| M1 | 空闲开 + 播歌 | 让出星环；通知可提示让出 | ✅ 0.1.11 网易云；**0.1.24** `com.huawei.music.auto` USAGE_MEDIA · 胶囊「播歌中·已让出」· **无** ClusterStrip · remotescreen 接管 |
 | M1b | 仅 Wallpaper Engine / motif 壁纸在播 | **不**让出；可上屏 | ✅ **0.1.22-music** · `MusicPlaybackFilter` 忽略 WE；胶囊「已上屏」· `applyCurrent ok` |
 | M2 | 暂停 ≥8s | 夺回壁纸 | ✅ 0.1.11 ~8s after-play |
 | M3 | 切歌空隙 <3s | 不闪壁纸 | ⬜ 待连机（需人工切歌）；单测 `PlaybackGateTest` ✅ |
@@ -148,7 +148,7 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | 版本 | 日期 | 必勾结果 | 备注 |
 |------|------|----------|------|
-| **0.1.24-cache** | 2026-08-03 | 羽化缓存 · SAF 导入 · ambient chip 刷新 | 见 CHANGELOG 0.1.24 |
+| **0.1.24-cache** | 2026-08-03 | 羽化缓存 · SAF · **M1 ✅** 华为音乐让出 · A2/I2 | 见 CHANGELOG；tag `v0.1.24-cache` |
 | **0.1.23-preview** | 2026-08-03 | 首页预览 = 星环同源 bake | decodeActiveForStrip hero |
 | **0.1.22-music** | 2026-08-03 | **M1b ✅** · WE 不挡上屏 · apply ok · 已上屏 | `MusicPlaybackFilter`；真音乐 M1 ⬜ |
 | **0.1.21-ambient** | 2026-08-03 | **A1 ✅** · 远端日夜自适应 | glass re-bake · AmbientWatch |

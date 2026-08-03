@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">星澜</string>
+    <string name="skeleton_hint">工程骨架已就绪。下一阶段：星环壁纸上屏与首页三键（见 docs/TECH-NOTES-1.0.md Phase 1）。</string>
+</resources>

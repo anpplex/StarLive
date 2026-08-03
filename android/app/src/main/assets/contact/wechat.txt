@@ -1,0 +1,2 @@
+# Replace with real WeChat id for custom orders
+REPLACE_ME_WECHAT

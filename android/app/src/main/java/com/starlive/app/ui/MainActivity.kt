@@ -475,6 +475,12 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(uiRefreshReceiver, filter)
         }
         orch.refreshLyraHandoff("main-resume")
+        // Some HUs block FGS from Application; re-assert KeepAlive when UI is visible
+        if (WallpaperRepository.idlePrefer(this) && !orch.isHandedOffToLyra()) {
+            runCatching {
+                com.starlive.app.service.KeepAliveService.start(this)
+            }
+        }
         rebuildLibraryRail()
         refreshUi()
         maybeSoftHints()

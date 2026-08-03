@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
-import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,7 +16,6 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,12 +24,17 @@ import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
+import com.starlive.app.display.ClusterApplyMessages
 import com.starlive.app.runtime.StripOrchestrator
-import com.starlive.ring.StripGeometry
+import com.starlive.app.service.KeepAliveService
+import com.starlive.app.ui.UiTokens.applyRoundedBg
+import com.starlive.app.ui.UiTokens.dp
 import com.starlive.app.wallpaper.WallpaperRepository
+import com.starlive.ring.StripGeometry
 
 /**
- * Home cockpit: preview + apply + import + demos + idle switch.
+ * Home cockpit: preview + apply + import + demos + settings.
+ * Layout tuned for car landscape (clear hierarchy, large hit targets).
  */
 class MainActivity : AppCompatActivity() {
     private lateinit var preview: ImageView
@@ -38,6 +42,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sourceTv: TextView
     private lateinit var heroSub: TextView
     private lateinit var libraryHost: LinearLayout
+    private lateinit var demoHost: LinearLayout
+    private var selectedDemoId: String? = null
 
     private val orch get() = (application as StarLiveApp).orchestrator
 
@@ -69,389 +75,47 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WallpaperRepository.ensureSeeded(this)
-        val dens = resources.displayMetrics.density
-        fun dp(v: Int) = (v * dens).toInt()
+        selectedDemoId = WallpaperRepository.activeId(this).takeIf { !it.startsWith("lib:") && it != "custom" }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0B0E12"))
-            setPadding(dp(20), dp(16), dp(20), dp(16))
+            setBackgroundColor(UiTokens.bg)
+            setPadding(dp(20), dp(14), dp(20), dp(20))
         }
 
-        // Top bar
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        top.addView(
-            TextView(this).apply {
-                text = getString(R.string.app_name)
-                setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        statusTv = TextView(this).apply {
-            setTextColor(Color.parseColor("#7DDEA0"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(dp(10), dp(4), dp(10), dp(4))
-            setBackgroundColor(Color.parseColor("#1A2430"))
-        }
-        top.addView(statusTv)
-        top.addView(
-            Button(this).apply {
-                text = "关于"
-                isAllCaps = false
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setBackgroundColor(Color.parseColor("#243040"))
-                setTextColor(Color.WHITE)
-                setOnClickListener {
-                    startActivity(Intent(this@MainActivity, AboutActivity::class.java))
-                }
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    dp(36),
-                ).apply { marginStart = dp(8) }
-            },
-        )
-        root.addView(top)
-
+        root.addView(buildTopBar())
+        root.addView(buildHeroCard())
+        root.addView(buildActionRow())
         root.addView(
-            TextView(this).apply {
-                text = "StarLive · ${BuildConfig.VERSION_NAME}"
-                setTextColor(Color.parseColor("#6B7A90"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(0, dp(4), 0, dp(10))
-            },
-        )
-
-        // Hero preview: gauge + band
-        val heroH = dp(56)
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                heroH,
-            )
-            setBackgroundColor(Color.parseColor("#151A22"))
-        }
-        val gaugeW = (heroH * StripGeometry.GAUGE_RESERVE / StripGeometry.STRIP_H)
-        hero.addView(
-            TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(gaugeW, heroH)
-                setBackgroundColor(Color.parseColor("#2A303A"))
-                text = "表盘"
-                gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#5A6578"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-            },
-        )
-        preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
-            layoutParams = LinearLayout.LayoutParams(0, heroH, 1f)
-            setOnClickListener { applyWallpaper() }
-        }
-        hero.addView(preview)
-        root.addView(hero)
-
-        heroSub = TextView(this).apply {
-            setTextColor(Color.parseColor("#9AABB8"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(0, dp(8), 0, dp(12))
-        }
-        root.addView(heroSub)
-
-        // CTAs
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        fun rowLp(end: Int = 0) = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            if (end > 0) marginEnd = end
-        }
-        row.addView(primaryBtn("应用当前") { applyWallpaper() }, rowLp(dp(8)))
-        row.addView(secondaryBtn("导入图片") { showImportSheet() }, rowLp(dp(8)))
-        row.addView(
-            secondaryBtn("我要定制") {
-                startActivity(Intent(this, CustomActivity::class.java))
-            },
-            rowLp(),
-        )
-        root.addView(row)
-
-        root.addView(
-            secondaryBtn("兑换主题") {
+            UiKit.secondaryButton(this, "兑换主题") {
                 startActivity(Intent(this, RedeemActivity::class.java))
-            },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(8) },
-        )
-
-        // Demos
-        root.addView(
-            TextView(this).apply {
-                text = "示范壁纸"
-                setTextColor(Color.parseColor("#8B9BB4"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(0, dp(16), 0, dp(6))
-            },
-        )
-        val chipScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-        }
-        val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val demos = WallpaperRepository.demos(this)
-        demos.forEach { d ->
-            chips.addView(
-                Button(this).apply {
-                    text = d.label
-                    isAllCaps = false
-                    setOnClickListener {
-                        WallpaperRepository.applyDemo(this@MainActivity, d.id)
-                        refreshUi()
-                        Toast.makeText(this@MainActivity, "已选 ${d.label} · 点应用同步到星环", Toast.LENGTH_SHORT).show()
-                    }
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        dp(40),
-                    ).apply { marginEnd = dp(8) }
-                },
-            )
-        }
-        chipScroll.addView(chips)
-        root.addView(chipScroll)
-
-        // Local library
-        root.addView(
-            TextView(this).apply {
-                text = "已导入（长按删除）"
-                setTextColor(Color.parseColor("#8B9BB4"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(0, dp(12), 0, dp(6))
-            },
-        )
-        libraryHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(libraryHost)
-        rebuildLibraryRail()
-
-        val sourceRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, dp(8))
-        }
-        sourceTv = TextView(this).apply {
-            setTextColor(Color.parseColor("#C5D0E0"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        sourceRow.addView(sourceTv)
-        sourceRow.addView(
-            Button(this).apply {
-                text = "恢复示范"
-                isAllCaps = false
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setBackgroundColor(Color.parseColor("#243040"))
-                setTextColor(Color.parseColor("#D0D8E8"))
-                setOnClickListener { confirmRestoreDemo() }
-            },
-        )
-        root.addView(sourceRow)
-
-        // Idle switch
-        val idleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        idleRow.addView(
-            TextView(this).apply {
-                text = "空闲显示壁纸"
-                setTextColor(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        idleRow.addView(
-            Switch(this).apply {
-                isChecked = WallpaperRepository.idlePrefer(this@MainActivity)
-                setOnCheckedChangeListener { _, checked ->
-                    orch.setIdlePrefer(checked)
-                    refreshUi()
-                    Toast.makeText(
-                        this@MainActivity,
-                        if (checked) "空闲显示壁纸" else "已让出原厂星环",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-            },
-        )
-        root.addView(idleRow)
-        root.addView(
-            TextView(this).apply {
-                text = getString(R.string.idle_caption)
-                setTextColor(Color.parseColor("#6B7A90"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                setPadding(0, dp(4), 0, 0)
+            }.also {
+                it.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(8) }
             },
         )
 
-        // Yield when Lyra installed
-        val lyraRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, 0)
-        }
-        lyraRow.addView(
-            TextView(this).apply {
-                text = "已装 Lyra 时让路"
-                setTextColor(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        lyraRow.addView(
-            Switch(this).apply {
-                isChecked = WallpaperRepository.yieldWhenLyraInstalled(this@MainActivity)
-                setOnCheckedChangeListener { _, checked ->
-                    WallpaperRepository.setYieldWhenLyraInstalled(this@MainActivity, checked)
-                    orch.refreshLyraHandoff("user-toggle")
-                    refreshUi()
-                    Toast.makeText(
-                        this@MainActivity,
-                        if (checked) "检测到 Lyra 时星澜不占星环" else "即使已装 Lyra 也可上壁纸",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-            },
-        )
-        root.addView(lyraRow)
+        root.addView(UiKit.sectionTitle(this, "选择壁纸"))
+        root.addView(buildLibraryCard())
 
-        // Carousel
-        val carRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, 0)
-        }
-        carRow.addView(
-            TextView(this).apply {
-                text = "示范轮播"
-                setTextColor(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        carRow.addView(
-            Switch(this).apply {
-                isChecked = WallpaperRepository.isCarouselEnabled(this@MainActivity)
-                setOnCheckedChangeListener { _, checked ->
-                    WallpaperRepository.setCarouselEnabled(this@MainActivity, checked)
-                    (application as StarLiveApp).wallpaperCarousel.syncFromSettings()
-                    refreshUi()
-                }
-            },
-        )
-        root.addView(carRow)
-        val intervalRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, 0)
-        }
-        intervalRow.addView(
-            TextView(this).apply {
-                text = "轮播间隔"
-                setTextColor(Color.parseColor("#C5D0E0"))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        val intervalVal = TextView(this).apply {
-            text = "${WallpaperRepository.carouselIntervalMinutes(this@MainActivity)} 分钟"
-            setTextColor(Color.parseColor("#8BB4E0"))
-            setPadding(dp(8), 0, dp(8), 0)
-        }
-        intervalRow.addView(
-            Button(this).apply {
-                text = "−"
-                setOnClickListener {
-                    val m = (WallpaperRepository.carouselIntervalMinutes(this@MainActivity) - 1)
-                        .coerceAtLeast(WallpaperRepository.CAROUSEL_MIN)
-                    WallpaperRepository.setCarouselIntervalMinutes(this@MainActivity, m)
-                    intervalVal.text = "$m 分钟"
-                    (application as StarLiveApp).wallpaperCarousel.reschedule()
-                }
-            },
-        )
-        intervalRow.addView(intervalVal)
-        intervalRow.addView(
-            Button(this).apply {
-                text = "+"
-                setOnClickListener {
-                    val m = (WallpaperRepository.carouselIntervalMinutes(this@MainActivity) + 1)
-                        .coerceAtMost(WallpaperRepository.CAROUSEL_MAX)
-                    WallpaperRepository.setCarouselIntervalMinutes(this@MainActivity, m)
-                    intervalVal.text = "$m 分钟"
-                    (application as StarLiveApp).wallpaperCarousel.reschedule()
-                }
-            },
-        )
-        root.addView(intervalRow)
+        root.addView(UiKit.sectionTitle(this, "显示与恢复"))
+        root.addView(buildSettingsCard())
 
-        // Night mode
-        root.addView(
-            TextView(this).apply {
-                text = "日夜模式"
-                setTextColor(Color.parseColor("#8B9BB4"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(0, dp(14), 0, dp(6))
-            },
-        )
-        val nightRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        listOf("auto" to "自动", "dark" to "深", "light" to "浅").forEach { (mode, label) ->
-            nightRow.addView(
-                Button(this).apply {
-                    text = label
-                    isAllCaps = false
-                    setOnClickListener {
-                        WallpaperRepository.setNightMode(this@MainActivity, mode)
-                        if (orch.showing) orch.applyCurrent("night-$mode")
-                        refreshUi()
-                    }
-                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f).apply {
-                        marginEnd = dp(6)
-                    }
-                    setBackgroundColor(Color.parseColor("#243040"))
-                    setTextColor(Color.WHITE)
-                },
-            )
-        }
-        root.addView(nightRow)
+        root.addView(UiKit.sectionTitle(this, "日夜"))
+        root.addView(buildNightRow())
 
-        // Footer
-        root.addView(
-            TextView(this).apply {
-                text = "规格说明  ·  升级到 Lyra 歌词特效"
-                setTextColor(Color.parseColor("#5B8DEF"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                setPadding(0, dp(18), 0, dp(4))
-                setOnClickListener {
-                    // open chooser-like: two options
-                    androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
-                        .setItems(arrayOf("规格说明", "升级到 Lyra")) { _, which ->
-                            when (which) {
-                                0 -> startActivity(Intent(this@MainActivity, SpecActivity::class.java))
-                                1 -> startActivity(Intent(this@MainActivity, UpgradeActivity::class.java))
-                            }
-                        }
-                        .show()
-                }
-            },
-        )
+        root.addView(buildFooterLinks())
 
         if (!WallpaperRepository.firstRunHintShown(this)) {
             Toast.makeText(this, R.string.first_run_hint, Toast.LENGTH_LONG).show()
             WallpaperRepository.setFirstRunHintShown(this)
         }
 
-        // Car HU may be short landscape — keep all settings reachable
         setContentView(
             ScrollView(this).apply {
-                setBackgroundColor(Color.parseColor("#0B0E12"))
+                setBackgroundColor(UiTokens.bg)
                 isFillViewport = true
                 addView(
                     root,
@@ -465,6 +129,305 @@ class MainActivity : AppCompatActivity() {
         refreshUi()
     }
 
+    private fun buildTopBar(): LinearLayout {
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val titles = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        titles.addView(UiKit.title(this, getString(R.string.app_name)))
+        titles.addView(
+            TextView(this).apply {
+                text = "StarLive · ${BuildConfig.VERSION_NAME}"
+                setTextColor(UiTokens.textMuted)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setPadding(0, dp(2), 0, 0)
+            },
+        )
+        top.addView(titles)
+        statusTv = UiKit.statusPill(this)
+        top.addView(statusTv)
+        top.addView(
+            UiKit.ghostButton(this, "关于") {
+                startActivity(Intent(this, AboutActivity::class.java))
+            }.also {
+                it.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = dp(8) }
+            },
+        )
+        return top
+    }
+
+    private fun buildHeroCard(): LinearLayout {
+        val card = UiKit.card(this)
+        val heroH = dp(64)
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                heroH,
+            )
+            applyRoundedBg(UiTokens.heroBg, 10f)
+        }
+        val gaugeW = (heroH * StripGeometry.GAUGE_RESERVE / StripGeometry.STRIP_H)
+        hero.addView(
+            TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(gaugeW, heroH)
+                applyRoundedBg(UiTokens.gaugeBg, 0f)
+                text = "表盘"
+                gravity = Gravity.CENTER
+                setTextColor(UiTokens.textMuted)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            },
+        )
+        preview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            layoutParams = LinearLayout.LayoutParams(0, heroH, 1f)
+            contentDescription = "星环预览，点按应用"
+            setOnClickListener { applyWallpaper() }
+        }
+        hero.addView(preview)
+        card.addView(hero)
+
+        heroSub = TextView(this).apply {
+            setTextColor(UiTokens.textSecondary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(0, dp(10), 0, dp(2))
+            setLineSpacing(0f, 1.2f)
+        }
+        card.addView(heroSub)
+
+        sourceTv = TextView(this).apply {
+            setTextColor(UiTokens.textMuted)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding(0, dp(2), 0, 0)
+        }
+        card.addView(sourceTv)
+        return card
+    }
+
+    private fun buildActionRow(): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(12) }
+        }
+        row.addView(UiKit.primaryButton(this, "应用当前") { applyWallpaper() }, UiKit.hGap(this, 1.2f, dp(8)))
+        row.addView(UiKit.secondaryButton(this, "导入") { showImportSheet() }, UiKit.hGap(this, 1f, dp(8)))
+        row.addView(
+            UiKit.secondaryButton(this, "定制") {
+                startActivity(Intent(this, CustomActivity::class.java))
+            },
+            UiKit.hGap(this, 1f),
+        )
+        return row
+    }
+
+    private fun buildLibraryCard(): LinearLayout {
+        val card = UiKit.card(this)
+        card.addView(
+            TextView(this).apply {
+                text = "示范"
+                setTextColor(UiTokens.textMuted)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            },
+        )
+        demoHost = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(6), 0, dp(4))
+        }
+        val demoScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(demoHost)
+        }
+        card.addView(demoScroll)
+        rebuildDemoChips()
+
+        card.addView(
+            TextView(this).apply {
+                text = "已导入 · 点选应用预览 · 长按删除"
+                setTextColor(UiTokens.textMuted)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                setPadding(0, dp(10), 0, 0)
+            },
+        )
+        libraryHost = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(6), 0, 0)
+        }
+        card.addView(libraryHost)
+        rebuildLibraryRail()
+
+        val sourceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, 0)
+        }
+        sourceRow.addView(
+            TextView(this).apply {
+                text = "可随时恢复内置示范"
+                setTextColor(UiTokens.textMuted)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        sourceRow.addView(UiKit.ghostButton(this, "恢复示范") { confirmRestoreDemo() })
+        card.addView(sourceRow)
+        return card
+    }
+
+    private fun buildSettingsCard(): LinearLayout {
+        val card = UiKit.card(this)
+        card.addView(
+            UiKit.settingRow(
+                this,
+                title = "空闲显示壁纸",
+                subtitle = getString(R.string.idle_caption),
+                initial = WallpaperRepository.idlePrefer(this),
+            ) { checked ->
+                orch.setIdlePrefer(checked)
+                refreshUi()
+                Toast.makeText(
+                    this,
+                    if (checked) "已开启空闲显示" else "已让出原厂星环",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            },
+        )
+        card.addView(UiKit.spacer(this, 6))
+        card.addView(
+            UiKit.settingRow(
+                this,
+                title = "已装 Lyra 时让路",
+                subtitle = "检测到 Lyra 时星澜不占星环，避免双开抢屏",
+                initial = WallpaperRepository.yieldWhenLyraInstalled(this),
+            ) { checked ->
+                WallpaperRepository.setYieldWhenLyraInstalled(this, checked)
+                orch.refreshLyraHandoff("user-toggle")
+                refreshUi()
+                Toast.makeText(
+                    this,
+                    if (checked) "检测到 Lyra 时星澜不占星环" else "即使已装 Lyra 也可上壁纸",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            },
+        )
+        card.addView(UiKit.spacer(this, 6))
+        card.addView(
+            UiKit.settingRow(
+                this,
+                title = "示范轮播",
+                subtitle = "仅本地示范图轮换（导入图不参与）",
+                initial = WallpaperRepository.isCarouselEnabled(this),
+            ) { checked ->
+                WallpaperRepository.setCarouselEnabled(this, checked)
+                (application as StarLiveApp).wallpaperCarousel.syncFromSettings()
+                refreshUi()
+            },
+        )
+
+        val intervalRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, 0)
+        }
+        intervalRow.addView(
+            TextView(this).apply {
+                text = "轮播间隔"
+                setTextColor(UiTokens.textSecondary)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        val intervalVal = TextView(this).apply {
+            text = "${WallpaperRepository.carouselIntervalMinutes(this@MainActivity)} 分钟"
+            setTextColor(UiTokens.info)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(dp(10), 0, dp(10), 0)
+        }
+        intervalRow.addView(
+            UiKit.secondaryButton(this, "−") {
+                val m = (WallpaperRepository.carouselIntervalMinutes(this) - 1)
+                    .coerceAtLeast(WallpaperRepository.CAROUSEL_MIN)
+                WallpaperRepository.setCarouselIntervalMinutes(this, m)
+                intervalVal.text = "$m 分钟"
+                (application as StarLiveApp).wallpaperCarousel.reschedule()
+            }.also {
+                it.layoutParams = LinearLayout.LayoutParams(dp(52), LinearLayout.LayoutParams.WRAP_CONTENT)
+            },
+        )
+        intervalRow.addView(intervalVal)
+        intervalRow.addView(
+            UiKit.secondaryButton(this, "+") {
+                val m = (WallpaperRepository.carouselIntervalMinutes(this) + 1)
+                    .coerceAtMost(WallpaperRepository.CAROUSEL_MAX)
+                WallpaperRepository.setCarouselIntervalMinutes(this, m)
+                intervalVal.text = "$m 分钟"
+                (application as StarLiveApp).wallpaperCarousel.reschedule()
+            }.also {
+                it.layoutParams = LinearLayout.LayoutParams(dp(52), LinearLayout.LayoutParams.WRAP_CONTENT)
+            },
+        )
+        card.addView(intervalRow)
+        return card
+    }
+
+    private fun buildNightRow(): LinearLayout {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val current = WallpaperRepository.nightMode(this)
+        listOf("auto" to "自动", "dark" to "深色", "light" to "浅色").forEachIndexed { i, (mode, label) ->
+            row.addView(
+                UiKit.chip(this, label, selected = current == mode) {
+                    WallpaperRepository.setNightMode(this, mode)
+                    if (orch.showing || orch.display.isAlive()) orch.applyCurrent("night-$mode")
+                    // rebuild chips selection by re-creating row parent is hard; refresh full night section via recreate chips:
+                    (row.parent as? LinearLayout)?.let { parent ->
+                        val idx = parent.indexOfChild(row)
+                        parent.removeViewAt(idx)
+                        parent.addView(buildNightRow(), idx)
+                    }
+                    refreshUi()
+                }.also {
+                    it.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        if (i < 2) marginEnd = dp(8)
+                    }
+                },
+            )
+        }
+        return row
+    }
+
+    private fun buildFooterLinks(): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(16), 0, dp(4))
+        }
+        row.addView(
+            UiKit.ghostButton(this, "规格说明") {
+                startActivity(Intent(this, SpecActivity::class.java))
+            },
+        )
+        row.addView(UiKit.spacer(this, 0).also {
+            it.layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
+        })
+        row.addView(
+            UiKit.ghostButton(this, "升级到 Lyra") {
+                startActivity(Intent(this, UpgradeActivity::class.java))
+            },
+        )
+        return row
+    }
+
     override fun onResume() {
         super.onResume()
         val filter = IntentFilter(StripOrchestrator.ACTION_UI_REFRESH)
@@ -475,16 +438,13 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(uiRefreshReceiver, filter)
         }
         orch.refreshLyraHandoff("main-resume")
-        // Some HUs block FGS from Application; re-assert KeepAlive when UI is visible
         if (WallpaperRepository.idlePrefer(this) && !orch.isHandedOffToLyra()) {
-            runCatching {
-                com.starlive.app.service.KeepAliveService.start(this)
-            }
+            runCatching { KeepAliveService.start(this) }
         }
         rebuildLibraryRail()
+        rebuildDemoChips()
         refreshUi()
         maybeSoftHints()
-        // process-start recover first tick ~0.4s — refresh capsule after apply
         statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 900L)
         statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
     }
@@ -494,58 +454,67 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    private fun rebuildDemoChips() {
+        if (!::demoHost.isInitialized) return
+        demoHost.removeAllViews()
+        val active = WallpaperRepository.activeId(this)
+        WallpaperRepository.demos(this).forEach { d ->
+            val selected = active == d.id || selectedDemoId == d.id
+            demoHost.addView(
+                UiKit.chip(this, d.label, selected = selected) {
+                    selectedDemoId = d.id
+                    WallpaperRepository.applyDemo(this, d.id)
+                    rebuildDemoChips()
+                    refreshUi()
+                    Toast.makeText(this, "已选 ${d.label} · 点「应用当前」同步到星环", Toast.LENGTH_SHORT).show()
+                },
+            )
+        }
+    }
+
     private fun rebuildLibraryRail() {
         if (!::libraryHost.isInitialized) return
         libraryHost.removeAllViews()
-        val dens = resources.displayMetrics.density
-        fun dp(v: Int) = (v * dens).toInt()
         val items = WallpaperRepository.libraryItems(this)
         if (items.isEmpty()) {
             libraryHost.addView(
                 TextView(this).apply {
-                    text = "导入后会出现在这里，最多 24 张"
-                    setTextColor(Color.parseColor("#5A6578"))
+                    text = "还没有导入图 · 用「导入」或「兑换主题」添加，最多 24 张"
+                    setTextColor(UiTokens.textMuted)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    setPadding(0, dp(4), 0, dp(4))
                 },
             )
             return
         }
         val scroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val active = WallpaperRepository.activeId(this)
         items.forEach { item ->
+            val selected = active == "lib:${item.id}" || active == item.id
             row.addView(
-                Button(this).apply {
-                    text = item.label.take(10)
-                    isAllCaps = false
-                    setBackgroundColor(Color.parseColor("#1E2A3A"))
-                    setTextColor(Color.parseColor("#D0D8E8"))
-                    setOnClickListener {
-                        if (WallpaperRepository.applyLibraryItem(this@MainActivity, item.id)) {
-                            refreshUi()
-                            Toast.makeText(
-                                this@MainActivity,
-                                "已选 ${item.label} · 点应用同步到星环",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                UiKit.chip(this, item.label.take(10), selected = selected) {
+                    if (WallpaperRepository.applyLibraryItem(this, item.id)) {
+                        selectedDemoId = null
+                        rebuildDemoChips()
+                        rebuildLibraryRail()
+                        refreshUi()
+                        Toast.makeText(this, "已选 ${item.label} · 点「应用当前」同步", Toast.LENGTH_SHORT).show()
                     }
-                    setOnLongClickListener {
-                        AlertDialog.Builder(this@MainActivity)
+                }.also { chip ->
+                    chip.setOnLongClickListener {
+                        AlertDialog.Builder(this)
                             .setTitle("删除导入？")
                             .setMessage(item.label)
                             .setNegativeButton(android.R.string.cancel, null)
                             .setPositiveButton("删除") { _, _ ->
-                                WallpaperRepository.deleteLibraryItem(this@MainActivity, item.id)
+                                WallpaperRepository.deleteLibraryItem(this, item.id)
                                 rebuildLibraryRail()
                                 refreshUi()
                             }
                             .show()
                         true
                     }
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        dp(40),
-                    ).apply { marginEnd = dp(8) }
                 },
             )
         }
@@ -556,7 +525,6 @@ class MainActivity : AppCompatActivity() {
     private fun maybeSoftHints() {
         if (!WallpaperRepository.nlsHintShown(this)) {
             WallpaperRepository.setNlsHintShown(this)
-            // Non-blocking: only toast once
             Toast.makeText(this, R.string.nls_hint, Toast.LENGTH_LONG).show()
         }
     }
@@ -606,8 +574,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openDownloadImport() {
-        // MediaStore path needs images permission on some HUs
-        val need = if (android.os.Build.VERSION.SDK_INT >= 33) {
+        val need = if (Build.VERSION.SDK_INT >= 33) {
             android.Manifest.permission.READ_MEDIA_IMAGES
         } else {
             android.Manifest.permission.READ_EXTERNAL_STORAGE
@@ -646,6 +613,9 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.restore_demo) { _, _ ->
                 WallpaperRepository.restoreDemo(this)
+                selectedDemoId = WallpaperRepository.activeId(this)
+                rebuildDemoChips()
+                rebuildLibraryRail()
                 refreshUi()
                 Toast.makeText(this, R.string.restore_done, Toast.LENGTH_SHORT).show()
             }
@@ -653,78 +623,60 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshUi() {
+        if (!::sourceTv.isInitialized) return
         sourceTv.text = "当前来源 · ${WallpaperRepository.labelForActive(this)}"
-        val night = WallpaperRepository.isNightish(this)
         val f = WallpaperRepository.activeFile(this)
-        if (f.isFile) {
+        if (f.isFile && ::preview.isInitialized) {
             preview.setImageBitmap(BitmapFactory.decodeFile(f.absolutePath))
         }
         val idle = WallpaperRepository.idlePrefer(this)
         orch.syncShowingFromDisplay()
-        // Prefer live display probe: process-start recover launches cluster after onResume
         val alive = orch.display.isAlive()
         val launching = orch.showing && !alive
         val playing = orch.isEffectivelyPlaying()
         val handoff = orch.isHandedOffToLyra()
         when {
-            handoff -> {
-                statusTv.text = getString(R.string.status_handed_off)
-                statusTv.setTextColor(Color.parseColor("#B8A0E0"))
-                heroSub.text = getString(R.string.hero_handed_off)
-            }
-            playing && idle -> {
-                statusTv.text = getString(R.string.status_yield_playing)
-                statusTv.setTextColor(Color.parseColor("#8BB4E0"))
-                heroSub.text = getString(R.string.hero_yield_playing)
-            }
-            !idle -> {
-                statusTv.text = "已让出原厂"
-                statusTv.setTextColor(Color.parseColor("#8B9BB4"))
-                heroSub.text = "已让出原厂星环 · 开「空闲显示」后可再上屏"
-            }
-            alive -> {
-                statusTv.text = "已上屏"
-                statusTv.setTextColor(Color.parseColor("#7DDEA0"))
-                heroSub.text = "星环与预览一致 · 点预览可再应用"
-            }
-            launching -> {
-                statusTv.text = "上屏中…"
-                statusTv.setTextColor(Color.parseColor("#8BB4E0"))
-                heroSub.text = "正在打开星环 · 片刻后自动同步状态"
-            }
-            orch.lastError == "launch-failed" -> {
-                statusTv.text = "无法上屏"
-                statusTv.setTextColor(Color.parseColor("#E08A8A"))
-                heroSub.text = com.starlive.app.display.ClusterApplyMessages.noCluster(
-                    orch.display.listDisplaysForProbe(),
-                )
-            }
-            else -> {
-                statusTv.text = "未上屏"
-                statusTv.setTextColor(Color.parseColor("#E0C48A"))
-                heroSub.text = "已选「${WallpaperRepository.labelForActive(this)}」· 点应用看星环"
-            }
+            handoff -> styleStatus(
+                getString(R.string.status_handed_off),
+                UiTokens.lyra,
+                getString(R.string.hero_handed_off),
+            )
+            playing && idle -> styleStatus(
+                getString(R.string.status_yield_playing),
+                UiTokens.info,
+                getString(R.string.hero_yield_playing),
+            )
+            !idle -> styleStatus(
+                "已让出原厂",
+                UiTokens.textMuted,
+                "已让出原厂星环 · 开「空闲显示」后可再上屏",
+            )
+            alive -> styleStatus(
+                "已上屏",
+                UiTokens.success,
+                "星环与预览一致 · 点预览或「应用当前」可再同步",
+            )
+            launching -> styleStatus(
+                "上屏中…",
+                UiTokens.info,
+                "正在打开星环 · 片刻后自动同步状态",
+            )
+            orch.lastError == "launch-failed" -> styleStatus(
+                "无法上屏",
+                UiTokens.danger,
+                ClusterApplyMessages.noCluster(orch.display.listDisplaysForProbe()),
+            )
+            else -> styleStatus(
+                "未上屏",
+                UiTokens.warning,
+                "已选「${WallpaperRepository.labelForActive(this)}」· 点「应用当前」同步到星环",
+            )
         }
-        // night unused except future dual — silence lint
-        @Suppress("UNUSED_EXPRESSION")
-        night
     }
 
-    private fun primaryBtn(label: String, onClick: () -> Unit): Button =
-        Button(this).apply {
-            text = label
-            isAllCaps = false
-            setBackgroundColor(Color.parseColor("#3D6FE0"))
-            setTextColor(Color.WHITE)
-            setOnClickListener { onClick() }
-        }
-
-    private fun secondaryBtn(label: String, onClick: () -> Unit): Button =
-        Button(this).apply {
-            text = label
-            isAllCaps = false
-            setBackgroundColor(Color.parseColor("#243040"))
-            setTextColor(Color.parseColor("#D0D8E8"))
-            setOnClickListener { onClick() }
-        }
+    private fun styleStatus(label: String, color: Int, sub: String) {
+        statusTv.text = label
+        statusTv.setTextColor(color)
+        heroSub.text = sub
+    }
 }

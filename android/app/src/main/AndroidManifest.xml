@@ -20,6 +20,14 @@
             <data android:mimeType="image/*" />
         </intent>
         <intent>
+            <action android:name="android.intent.action.PICK" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
@@ -45,6 +53,11 @@
 
         <activity
             android:name=".ui.ImportConfirmActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.StarLive" />
+        <activity
+            android:name=".ui.GalleryPickActivity"
             android:exported="false"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.StarLive" />

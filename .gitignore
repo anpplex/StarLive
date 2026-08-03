@@ -45,3 +45,4 @@ research/apks/
 research/decompile/
 screenshot-*.png
 Thumbs.db
+.tmp-shots/

@@ -13,6 +13,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -26,6 +27,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -102,7 +104,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** SAF document picker — more reliable on multi-user car HUs than plain GetContent. */
+    /** System photo picker (preferred gallery path). */
+    private val pickVisualMedia = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "图库"))
+    }
+
+    /** ACTION_PICK MediaStore — classic system gallery on many car HUs. */
+    private val pickMediaStore = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val uri = result.data?.data ?: return@registerForActivityResult
+        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "图库"))
+    }
+
+    /** SAF document picker — files, Download, USB, etc. */
     private val pickDocument = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
         runCatching {
@@ -114,16 +132,21 @@ class MainActivity : AppCompatActivity() {
         startActivity(ImportConfirmActivity.intentFromUri(this, uri, "文件"))
     }
 
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    private val pickImageContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
-        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "相册"))
+        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "图库"))
     }
+
+    /** After storage permission: open MediaStore gallery or Download fallback. */
+    private var pendingAfterStorage: (() -> Unit)? = null
 
     private val requestReadImages = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        val next = pendingAfterStorage
+        pendingAfterStorage = null
         if (granted) {
-            openDownloadImport()
+            next?.invoke()
         } else {
             Toast.makeText(this, R.string.need_storage, Toast.LENGTH_LONG).show()
         }
@@ -864,16 +887,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun showImportSheet() {
         val items = arrayOf(
-            getString(R.string.import_from_picker),
-            getString(R.string.import_from_download),
+            getString(R.string.import_from_gallery),
+            getString(R.string.import_from_file),
             getString(R.string.import_filename_help),
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.import_sheet_title)
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> openPicker()
-                    1 -> openDownloadImport()
+                    0 -> openGallery()
+                    1 -> openFilePicker()
                     2 -> showFilenameHelp()
                 }
             }
@@ -881,44 +904,93 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun openPicker() {
-        // Prefer SAF OpenDocument (I1: multi-user car + ES/DocumentsUI).
-        val opened = runCatching {
-            pickDocument.launch(arrayOf("image/*", "image/jpeg", "image/png"))
-            true
-        }.getOrDefault(false)
-        if (opened) return
-        runCatching {
-            pickImage.launch("image/*")
-        }.onFailure {
-            Toast.makeText(this, R.string.picker_unavailable, Toast.LENGTH_LONG).show()
-            openDownloadImport()
+    /**
+     * Car HU: Huawei Photos is Harmony-only (no ACTION_PICK).
+     * Primary path = in-app MediaStore grid (same images the system media library indexes).
+     * Fallbacks: Photo Picker / PICK / GetContent / Download fixed-name.
+     */
+    private fun openGallery() {
+        ensureReadImagesPermission {
+            startActivity(Intent(this, GalleryPickActivity::class.java))
         }
     }
 
-    private fun openDownloadImport() {
+    private fun ensureReadImagesPermission(onGranted: () -> Unit) {
         val need = if (Build.VERSION.SDK_INT >= 33) {
             android.Manifest.permission.READ_MEDIA_IMAGES
         } else {
             android.Manifest.permission.READ_EXTERNAL_STORAGE
         }
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, need)
-            != android.content.pm.PackageManager.PERMISSION_GRANTED
+            == android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
-            requestReadImages.launch(need)
+            onGranted()
             return
         }
-        val f = WallpaperRepository.findDownloadCandidate(this)
-        if (f == null) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.no_download_title)
-                .setMessage(R.string.no_download_msg)
-                .setPositiveButton(android.R.string.ok, null)
-                .setNeutralButton(R.string.import_filename_help) { _, _ -> showFilenameHelp() }
-                .show()
-            return
+        pendingAfterStorage = onGranted
+        requestReadImages.launch(need)
+    }
+
+    /** Optional external pickers when user needs ES / DocumentsUI etc. */
+    private fun openSystemGalleryFallback() {
+        if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(this)) {
+            runCatching {
+                pickVisualMedia.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+                return
+            }
         }
-        startActivity(ImportConfirmActivity.intentFromPath(this, f.absolutePath, f.name))
+        val pickOk = runCatching {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
+                type = "image/*"
+            }
+            if (intent.resolveActivity(packageManager) != null) {
+                pickMediaStore.launch(intent)
+                true
+            } else {
+                false
+            }
+        }.getOrDefault(false)
+        if (pickOk) return
+        runCatching { pickImageContent.launch("image/*") }
+            .onFailure {
+                Toast.makeText(this, R.string.gallery_unavailable, Toast.LENGTH_SHORT).show()
+                openDownloadImportFallback()
+            }
+    }
+
+    /** SAF OpenDocument — files, Download, USB, ES File Explorer, etc. */
+    private fun openFilePicker() {
+        val opened = runCatching {
+            pickDocument.launch(arrayOf("image/*", "image/jpeg", "image/png"))
+            true
+        }.getOrDefault(false)
+        if (opened) return
+        runCatching {
+            pickImageContent.launch("image/*")
+        }.onFailure {
+            Toast.makeText(this, R.string.picker_unavailable, Toast.LENGTH_LONG).show()
+            openDownloadImportFallback()
+        }
+    }
+
+    /** Scan Download / app files for starlive_wallpaper.* (adb / manual drop). */
+    private fun openDownloadImportFallback() {
+        ensureReadImagesPermission {
+            val f = WallpaperRepository.findDownloadCandidate(this)
+            if (f == null) {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.no_download_title)
+                    .setMessage(R.string.no_download_msg)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .setNeutralButton(R.string.import_filename_help) { _, _ -> showFilenameHelp() }
+                    .setNegativeButton("系统选择器") { _, _ -> openSystemGalleryFallback() }
+                    .show()
+                return@ensureReadImagesPermission
+            }
+            startActivity(ImportConfirmActivity.intentFromPath(this, f.absolutePath, f.name))
+        }
     }
 
     private fun showFilenameHelp() {

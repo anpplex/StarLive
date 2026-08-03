@@ -13,8 +13,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 37
-        versionName = "0.1.33-author"
+        versionCode = 42
+        versionName = "0.1.38-crop-edit"
         // Override at build: -PREDEEM_API_BASE=https://host
         buildConfigField(
             "String",
@@ -70,5 +70,6 @@ dependencies {
     implementation(project(":ring-wallpaper-core"))
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.activity:activity-ktx:1.9.3")
     testImplementation("junit:junit:4.13.2")
 }

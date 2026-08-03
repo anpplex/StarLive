@@ -9,6 +9,43 @@
 - 在线主题商店（非兑换码路径）
 - QA 剩余 ⬜：I1 第三方文件管理器内完整点选（选择器已通）；R3/R4 Admin
 
+## [0.1.38-crop-edit] — 2026-08-04
+
+### Import
+
+- 确认页支持 **拖动 / 双指缩放** 选择 2990×284 裁切区
+- 车机友好：放大 / 缩小 / 重置 按钮；框外遮罩 + 参考线
+
+## [0.1.37-strip-chip] — 2026-08-04
+
+### Import gallery
+
+- 文件夹 chip 增加 **仅长条**（筛星环条带候选，score≥40）
+
+## [0.1.36-gallery-ux] — 2026-08-04
+
+### Import gallery
+
+- 缩略图：更小 decode + LruCache + 预取，滚动更顺
+- 分页：每页 40 张，滑到底 /「加载更多」
+- 文件夹 chip 筛选（Download / Pictures / …）
+- 长条壁纸（≈2990×284 / 全条 4032）优先排序
+
+## [0.1.35-mediastore] — 2026-08-04
+
+### Import
+
+- **从系统图库导入** 改为应用内 MediaStore 网格选图（适配华为鸿蒙图库无 Android PICK 的车机）
+- 点选缩略图 → 确认裁切 → 应用到星环；权限：`READ_MEDIA_IMAGES` / 存储
+
+## [0.1.34-gallery] — 2026-08-04
+
+### Import
+
+- 「从 Download 导入」改为 **从系统图库导入**（Photo Picker → MediaStore 图库 → GetContent）
+- 「从相册或文件」改为 **从文件选择**（SAF OpenDocument）
+- Download 固定文件名仅作图库/文件均失败时的兜底
+
 ## [0.1.33-author] — 2026-08-04
 
 ### Product

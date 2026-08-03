@@ -1,53 +1,47 @@
 # 星澜 StarLive
 
-面向阿维塔车机的 **星环空闲壁纸** 工具。开源免费，支持内置壁纸、本地导入与主题兑换；私人定制另售。播放音乐时自动暂停星环占用；需要歌词与视觉特效时，可升级至 [Lyra](https://github.com/anpplex)。
+面向 **阿维塔车机星环屏** 的壁纸工具。
+
+在车机上为星环空闲状态更换壁纸：内置图、本地导入与裁切、主题兑换；播放音乐时自动让出星环。需要歌词与播歌特效时，可配合 [Lyra](https://github.com/anpplex) 使用。
 
 | 项目 | 说明 |
 |------|------|
-| 应用名称 | 星澜 / StarLive |
+| 名称 | 星澜 / StarLive |
 | 包名 | `com.starlive.app` |
-| 最新版本 | [Releases](https://github.com/anpplex/StarLive/releases/latest) |
-| 许可证 | [Apache-2.0](./LICENSE) |
-| 源码 | https://github.com/anpplex/StarLive |
+| 适配 | 阿维塔车机星环（4032×284，壁纸带 2990×284） |
+| 版本 | [Releases](https://github.com/anpplex/StarLive/releases/latest) |
+| 协议 | [Apache-2.0](./LICENSE) |
 
-## 功能概览
+## 功能
 
-- 星环空闲壁纸（旁路自绘，非系统 WallpaperService）
-- 内置壁纸浏览与切换、导入裁切、本地图库
-- 播放音乐时自动让出星环；可跟随车机日夜模式
-- 主题兑换、版本检查、与 Lyra 的壁纸互通
+- 星环空闲壁纸显示（旁路自绘）
+- 内置壁纸横滑切换
+- 从车机媒体库 / 文件导入，支持拖动缩放裁切
+- 播放音乐时自动暂停星环占用
+- 跟随车机日夜模式
+- 主题兑换、壁纸定制（见 [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md)）
 
 ## 构建与安装
 
 ```bash
 cd android
 ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
-./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
 
-# 阿维塔 / 华为车机
+# 阿维塔 / 华为车机（旁路安装）
 ../scripts/install-starlive-car.sh <SERIAL>
 ```
 
-装机步骤、签名与权限说明见 [docs/INSTALL.md](./docs/INSTALL.md)。
+单元测试：
 
-## 文档
+```bash
+./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
+```
 
-| 文档 | 内容 |
-|------|------|
-| [docs/INSTALL.md](./docs/INSTALL.md) | 构建、签名、车机安装 |
-| [docs/PRIVACY.md](./docs/PRIVACY.md) | 隐私与权限 |
-| [docs/PRODUCT_BOUNDARIES.md](./docs/PRODUCT_BOUNDARIES.md) | 能力边界 |
-| [docs/LYRA-UPGRADE.md](./docs/LYRA-UPGRADE.md) | 与 Lyra 的互通约定 |
-| [docs/THEME-PACK.md](./docs/THEME-PACK.md) | 主题包格式 |
-| [docs/RING-WALLPAPER-CORE.md](./docs/RING-WALLPAPER-CORE.md) | 几何与裁切模块 |
-| [docs/CUSTOM-SOP.md](./docs/CUSTOM-SOP.md) | 壁纸定制 |
-| [CHANGELOG.md](./CHANGELOG.md) | 版本变更记录 |
-
-索引：[docs/README.md](./docs/README.md)
+更多版本说明见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 免责声明
 
-本软件为第三方工具，与阿维塔、华为官方无关联。请在车辆静止时设置壁纸。系统升级可能导致功能变化或失效。
+第三方工具，与阿维塔、华为官方无关。请在车辆静止时设置壁纸。系统升级可能导致功能变化或失效。
 
 ## 许可
 

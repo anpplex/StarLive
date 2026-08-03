@@ -23,8 +23,6 @@
   --out ./dist/pack_client_YYYYMMDD.zip
 ```
 
-主题包格式见 [THEME-PACK.md](./THEME-PACK.md)。
-
 ## 说明
 
 - 不承接侵权、暴力或无法适配条带构图的需求  

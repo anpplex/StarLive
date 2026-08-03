@@ -2,14 +2,19 @@ package com.starlive.app
 
 import android.app.Application
 import android.util.Log
+import com.starlive.app.runtime.StripOrchestrator
+import com.starlive.app.wallpaper.WallpaperRepository
 
-/**
- * Application entry. Phase 0 skeleton — wallpaper seed / FGS land in later phases.
- */
 class StarLiveApp : Application() {
+    lateinit var orchestrator: StripOrchestrator
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "StarLiveApp onCreate version=${BuildConfig.VERSION_NAME}")
+        orchestrator = StripOrchestrator(this)
+        runCatching { WallpaperRepository.ensureSeeded(this) }
+            .onFailure { Log.w(TAG, "seed failed", it) }
+        Log.i(TAG, "StarLiveApp onCreate ${BuildConfig.VERSION_NAME}")
     }
 
     companion object {

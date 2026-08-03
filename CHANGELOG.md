@@ -9,6 +9,17 @@
 - 在线主题商店（非兑换码路径）
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
 - 实车矩阵逐项勾选归档
+- 车机开机自启：依赖厂商白名单；探针对齐 BOOT 是否送达
+
+## [0.1.12-car] — 2026-08-03
+
+### Added
+
+- `boot_probe.log`：`StartupReceiver` 被调用时落盘（冷启 logcat 易丢）
+
+### Verified on device
+
+- **B1 开机自启 ❌**（`adb reboot` ×2）：进程未起、无 KeepAlive、无 `boot_probe.log` → 系统未把 BOOT 交给星澜（非 App 逻辑未调度）
 
 ## [0.1.11-car] — 2026-08-03
 

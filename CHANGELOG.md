@@ -16,6 +16,15 @@
   **0.1.13+ 补偿**：进程启动自动 recover；**0.1.14** process-start 首跳约 0.4s。  
   见 `docs/QA-MATRIX.md` §B1。
 
+## [0.1.16-polish] — 2026-08-03
+
+### Added / Changed
+
+- `BootRecoverDelays` · `ClusterApplyMessages` · `LibraryIndexCodec`（纯逻辑 + 单测）
+- `UpdateChecker.isNewerThan` 单测
+- 删除当前库图：自动切下一张或恢复示范（避免 active 悬空）
+- README 同步到当前版本与构建/测试命令
+
 ## [0.1.15-quality] — 2026-08-03
 
 ### Added

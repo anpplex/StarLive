@@ -689,7 +689,9 @@ class MainActivity : AppCompatActivity() {
             orch.lastError == "launch-failed" -> {
                 statusTv.text = "无法上屏"
                 statusTv.setTextColor(Color.parseColor("#E08A8A"))
-                heroSub.text = "星环屏不可达（模拟器/无 cluster 时常见）· ${orch.display.listDisplaysForProbe()}"
+                heroSub.text = com.starlive.app.display.ClusterApplyMessages.noCluster(
+                    orch.display.listDisplaysForProbe(),
+                )
             }
             else -> {
                 statusTv.text = "未上屏"

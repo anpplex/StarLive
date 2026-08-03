@@ -8,7 +8,13 @@
 
 - ContentProvider 自动迁移、多图本地库
 
-## [0.1.2-p05] — 2026-08-03
+## [0.1.3-demo] — 2026-08-03
+
+### Changed
+
+- 示范壁纸改为宽幅影像级素材（简约 / 氛围 / 抽象 × 深浅）
+- 补充 `docs/patches/lyra-import-starlive-handoff.md`（Lyra 导入路径说明）
+
 
 ### Added
 

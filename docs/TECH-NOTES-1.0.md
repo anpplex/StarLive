@@ -5,7 +5,7 @@
 | 日期 | 2026-08-03 |
 | 状态 | P0 开工依据 |
 | 产品 | 星澜 / StarLive |
-| 上游 | [FEATURE-ALIGNMENT-1.0.md](./FEATURE-ALIGNMENT-1.0.md) · [INTERACTION-1.0.md](./INTERACTION-1.0.md) |
+| 上游 | [INTERACTION-1.0.md](./INTERACTION-1.0.md) · [DECISIONS.md](./DECISIONS.md) |
 | 参考实现 | `/Users/anpple/Codex/Lyra/android`（**拷贝精简，不链 monorepo 模块**） |
 
 ---
@@ -51,27 +51,14 @@
 ### 2.1 仓库布局（建议）
 
 ```text
-/Users/anpple/Codex/StarLive/
-├── README.md                 # 后补
+StarLive/
+├── README.md
 ├── LICENSE                   # Apache-2.0
-├── docs/
-│   ├── FEATURE-ALIGNMENT-1.0.md
-│   ├── INTERACTION-1.0.md
-│   ├── AUDIT-GAPS-1.0.md
-│   └── TECH-NOTES-1.0.md     # 本文
+├── docs/                     # 见 docs/README.md
+├── scripts/
 └── android/
-    ├── settings.gradle.kts
-    ├── build.gradle.kts
-    ├── gradle.properties
-    └── app/
-        ├── build.gradle.kts
-        └── src/main/
-            ├── AndroidManifest.xml
-            ├── java/com/starlive/app/...
-            ├── res/
-            └── assets/
-                ├── wallpaper/          # 4 demo + catalog.json
-                └── contact/            # wechat id / qr（可替换）
+    ├── app/                  # com.starlive.app
+    └── ring-wallpaper-core/  # com.starlive.ring
 ```
 
 ### 2.2 Gradle 基线

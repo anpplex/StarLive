@@ -81,6 +81,22 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#1A2430"))
         }
         top.addView(statusTv)
+        top.addView(
+            Button(this).apply {
+                text = "关于"
+                isAllCaps = false
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setBackgroundColor(Color.parseColor("#243040"))
+                setTextColor(Color.WHITE)
+                setOnClickListener {
+                    startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    dp(36),
+                ).apply { marginStart = dp(8) }
+            },
+        )
         root.addView(top)
 
         root.addView(
@@ -147,7 +163,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
         row.addView(secondaryBtn("我要定制") {
-            Toast.makeText(this, "Phase 4：定制页", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, CustomActivity::class.java))
         }.also {
             (it.layoutParams as LinearLayout.LayoutParams).width = 0
             (it.layoutParams as LinearLayout.LayoutParams).weight = 1f
@@ -244,6 +260,57 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(Color.parseColor("#6B7A90"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(0, dp(4), 0, 0)
+            },
+        )
+
+        // Night mode
+        root.addView(
+            TextView(this).apply {
+                text = "日夜模式"
+                setTextColor(Color.parseColor("#8B9BB4"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setPadding(0, dp(14), 0, dp(6))
+            },
+        )
+        val nightRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf("auto" to "自动", "dark" to "深", "light" to "浅").forEach { (mode, label) ->
+            nightRow.addView(
+                Button(this).apply {
+                    text = label
+                    isAllCaps = false
+                    setOnClickListener {
+                        WallpaperRepository.setNightMode(this@MainActivity, mode)
+                        if (orch.showing) orch.applyCurrent("night-$mode")
+                        refreshUi()
+                    }
+                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                        marginEnd = dp(6)
+                    }
+                    setBackgroundColor(Color.parseColor("#243040"))
+                    setTextColor(Color.WHITE)
+                },
+            )
+        }
+        root.addView(nightRow)
+
+        // Footer
+        root.addView(
+            TextView(this).apply {
+                text = "规格说明  ·  升级到 Lyra 歌词特效"
+                setTextColor(Color.parseColor("#5B8DEF"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setPadding(0, dp(18), 0, dp(4))
+                setOnClickListener {
+                    // open chooser-like: two options
+                    androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                        .setItems(arrayOf("规格说明", "升级到 Lyra")) { _, which ->
+                            when (which) {
+                                0 -> startActivity(Intent(this@MainActivity, SpecActivity::class.java))
+                                1 -> startActivity(Intent(this@MainActivity, UpgradeActivity::class.java))
+                            }
+                        }
+                        .show()
+                }
             },
         )
 

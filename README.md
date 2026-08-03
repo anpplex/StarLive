@@ -8,7 +8,7 @@
 | 英文名 | **StarLive** |
 | 定位 | [Lyra](https://github.com/anpplex) 生态 **子项目 / 引流层** · 可 [丝滑升级到 Lyra](./docs/LYRA-UPGRADE.md) |
 | 仓库 | https://github.com/anpplex/StarLive |
-| 最新版本 | **0.1.16-polish** · [Releases](https://github.com/anpplex/StarLive/releases) |
+| 最新版本 | **0.1.24-cache** · [Releases](https://github.com/anpplex/StarLive/releases) |
 | 协议 | [Apache-2.0](./LICENSE) |
 | 文档 | [`docs/`](./docs/) |
 | 协作者 | [`AGENTS.md`](./AGENTS.md) |
@@ -26,7 +26,10 @@
 - ✅ 主题包兑换（LicenseHub）与打包 / 发版脚本
 - ✅ Lyra ContentProvider / Download 互通
 - ✅ CI：assembleDebug + unit tests（裁切 / 兑换 / PlaybackGate）
-- ✅ 实车矩阵大部通过（[QA-MATRIX](./docs/QA-MATRIX.md)）；剩余 I1 相册 / M3 实车切歌 / L3–L4 需人工
+- ✅ 远端日夜跟随（`ui_night_mode`）+ 星环羽化交叉淡入
+- ✅ 播歌让出过滤壁纸引擎假阳性（0.1.22）
+- ✅ 首页预览与星环同源烘焙 + 羽化缓存
+- ✅ 实车矩阵大部通过（[QA-MATRIX](./docs/QA-MATRIX.md)）；剩余 I1 完整选图 / M3 实车切歌 / 真音乐让出回归需人工；0.1.22 已过滤 Wallpaper Engine 假让出
 
 ## 快速开始
 

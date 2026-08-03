@@ -61,5 +61,10 @@
 | 0.1.14-car | `v0.1.14-car` | CropStrategy 单测 · 快 process-start · I3–I5 |
 | 0.1.15-quality | `v0.1.15-quality` | Redeem/Playback 单测 · Release 签名 |
 | 0.1.16-polish | （本分支） | 纯逻辑单测 · 库删回退 · README |
+| 0.1.20-ui | main | 二级页 UiKit |
+| 0.1.21-ambient | main | 远端日夜 · 羽化交叉淡入 |
+| 0.1.22-music | main | WE 假播歌过滤 |
+| 0.1.23-preview | main | 首页预览同源 bake |
+| 0.1.24-cache | main | 羽化缓存 · SAF 导入 |
 
 分支命名对齐：`feature/p0-phase1-strip-display` 等。见 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)。

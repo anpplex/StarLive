@@ -12,17 +12,6 @@
 - 适配表盘安全区；左缘羽化可由应用处理  
 - 兑换码 1 个（一码一设备），或直发图片与导入说明  
 
-## 打包
-
-```bash
-./scripts/make-theme-pack.sh \
-  --id pack_client_YYYYMMDD \
-  --title "客户昵称·定制" \
-  --image ./out.jpg \
-  --label "定制" \
-  --out ./dist/pack_client_YYYYMMDD.zip
-```
-
 ## 说明
 
 - 不承接侵权、暴力或无法适配条带构图的需求  

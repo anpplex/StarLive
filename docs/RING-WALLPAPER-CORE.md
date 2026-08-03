@@ -14,7 +14,8 @@
 | 类型 | 说明 |
 |------|------|
 | `StripGeometry` | 4032×284 / 表盘 1042 / 内容 2990×284 / feather 88·104 |
-| `WallpaperCropper` | 精确 / 右带 / 居中 cover |
+| `CropStrategy` | 纯尺寸 → EXACT / BAND / CENTER（无 Bitmap，可 JVM 单测） |
+| `WallpaperCropper` | decode + 按 [CropStrategy] 裁切 Bitmap |
 | `WallpaperEdgeSoftener` | 左缘 soft dissolve bake |
 
 **不包含：** 上屏 Activity、FGS、兑换、Lyra 特效、License。

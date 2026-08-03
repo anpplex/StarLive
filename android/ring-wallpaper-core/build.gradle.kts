@@ -21,4 +21,5 @@ android {
 
 dependencies {
     // Pure Android graphics APIs — no appcompat required
+    testImplementation("junit:junit:4.13.2")
 }

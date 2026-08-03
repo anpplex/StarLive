@@ -12,6 +12,10 @@ class BootRecoverScheduler(
     private val main = Handler(Looper.getMainLooper())
     private var lastScheduleMs = 0L
 
+    /**
+     * @param reason boot / USER_PRESENT / process-start / …
+     * process-start uses a snappier first tick (user already opened the app).
+     */
     fun schedule(reason: String) {
         if (!WallpaperRepository.idlePrefer(app)) {
             Log.i(TAG, "boot recover skip idle off ($reason)")
@@ -23,11 +27,15 @@ class BootRecoverScheduler(
             return
         }
         lastScheduleMs = now
-        DELAYS.forEachIndexed { i, delay ->
+        val delays = delaysFor(reason)
+        delays.forEachIndexed { i, delay ->
             main.postDelayed({ tick("$reason#$i") }, delay)
         }
-        Log.i(TAG, "boot recover scheduled ($reason)")
+        Log.i(TAG, "boot recover scheduled ($reason) delays=${delays.joinToString()}")
     }
+
+    private fun delaysFor(reason: String): LongArray =
+        if (reason.startsWith("process-start")) PROCESS_START_DELAYS else BOOT_DELAYS
 
     private fun tick(reason: String) {
         if (!WallpaperRepository.idlePrefer(app)) return
@@ -46,6 +54,9 @@ class BootRecoverScheduler(
     companion object {
         private const val TAG = "StarLive"
         private const val DEBOUNCE_MS = 45_000L
-        private val DELAYS = longArrayOf(2_500L, 8_000L, 20_000L)
+        /** Cold boot / USER_PRESENT: cluster may not be ready immediately. */
+        private val BOOT_DELAYS = longArrayOf(2_500L, 8_000L, 20_000L)
+        /** User opened app after force-stop / blocked BOOT: first tick sooner. */
+        private val PROCESS_START_DELAYS = longArrayOf(400L, 2_500L, 8_000L)
     }
 }

@@ -18,6 +18,7 @@
 - `RedeemClient` + `ThemePackInstaller`（catalog.json + 壁纸文件）
 - `BuildConfig.REDEEM_API_BASE`（默认 `https://buy.998618.xyz`，可 `-PREDEEM_API_BASE=` 覆盖）
 - 安全文档 `docs/SECURITY-REDEEM-CODES.md`
+- 主题包格式 `docs/THEME-PACK.md` · 打包脚本 `scripts/make-theme-pack.sh`
 
 ## [0.1.4-lib] — 2026-08-03
 

@@ -8,6 +8,11 @@
 
 - 在线主题商店（非兑换码路径）
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
+- 实车矩阵逐项勾选归档
+
+### Added
+
+- `docs/QA-MATRIX.md` · `docs/CUSTOM-SOP.md` · `docs/INSTALL.md`
 
 ## [0.1.7-core] — 2026-08-03
 

@@ -21,29 +21,34 @@
 ## 当前状态
 
 - ✅ 产品 / 交互 / 技术规格（见 `docs/`）
-- ✅ Android App（空闲壁纸、导入、播歌让出、多图库、主题兑换）
-- ✅ 主题包格式与打包脚本（`docs/THEME-PACK.md` · `scripts/make-theme-pack.sh`）
+- ✅ Android App **0.1.7-core**（空闲壁纸、导入、播歌让出、多图库、主题兑换、`:ring-wallpaper-core`）
+- ✅ 主题包兑换（LicenseHub）与打包脚本
+- ✅ Lyra ContentProvider / Download 互通
+- ⬜ 实车矩阵按 [QA-MATRIX](./docs/QA-MATRIX.md) 勾选
 
 ## 文档入口
 
 | 文档 | 说明 |
 |------|------|
 | [docs/README.md](./docs/README.md) | 文档索引 |
+| [INSTALL](./docs/INSTALL.md) | 装机 |
+| [QA-MATRIX](./docs/QA-MATRIX.md) | 验收 |
+| [CUSTOM-SOP](./docs/CUSTOM-SOP.md) | 定制履约 |
 | [FEATURE-ALIGNMENT](./docs/FEATURE-ALIGNMENT-1.0.md) | 功能与方案 A |
-| [INTERACTION](./docs/INTERACTION-1.0.md) | 交互终稿 |
-| [TECH-NOTES](./docs/TECH-NOTES-1.0.md) | 工程与 P0 分期 |
 | [LYRA-UPGRADE](./docs/LYRA-UPGRADE.md) | 升级 Lyra 契约 |
-| [GIT_WORKFLOW](./docs/GIT_WORKFLOW.md) | 分支与 PR |
+| [THEME-PACK](./docs/THEME-PACK.md) | 主题包格式 |
 
 ## 免责声明
 
 第三方工具，**与阿维塔 / 华为官方无关**。请在停车时设置壁纸。系统升级可能导致功能变化或失效。旁路自绘星环，非系统 WallpaperService。
 
-## 构建（工程就绪后）
+## 构建
 
 ```bash
-cd android && ./gradlew :app:assembleDebug
+cd android && ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
 ```
+
+详见 [docs/INSTALL.md](./docs/INSTALL.md)。
 
 ## 许可
 

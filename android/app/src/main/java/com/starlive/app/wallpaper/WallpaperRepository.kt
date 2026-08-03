@@ -83,14 +83,16 @@ object WallpaperRepository {
     }
 
     fun activeId(context: Context): String {
-        val raw = prefs(context).getString(KEY_ACTIVE_ID, "minimal") ?: "minimal"
+        val raw = prefs(context).getString(KEY_ACTIVE_ID, "beauty") ?: "beauty"
         return migrateLegacyId(raw)
     }
 
     private fun migrateLegacyId(id: String): String = when (id) {
-        "demo_minimal_dark", "demo_minimal_light" -> "minimal"
-        "demo_atmosphere", "demo_atmosphere_dark", "demo_atmosphere_light" -> "atmosphere"
-        "demo_abstract", "demo_abstract_dark", "demo_abstract_light" -> "abstract"
+        // legacy 简约/氛围/抽象 → first new demo
+        "minimal", "demo_minimal_dark", "demo_minimal_light",
+        "atmosphere", "demo_atmosphere", "demo_atmosphere_dark", "demo_atmosphere_light",
+        "abstract", "demo_abstract", "demo_abstract_dark", "demo_abstract_light",
+        -> "beauty"
         else -> id
     }
 
@@ -305,7 +307,7 @@ object WallpaperRepository {
 
     fun restoreDemo(context: Context): Boolean {
         PendingApplyStore.clear(context)
-        val first = demos(context).firstOrNull()?.id ?: "minimal"
+        val first = demos(context).firstOrNull()?.id ?: "beauty"
         prefs(context).edit().remove(KEY_CUSTOM_LABEL).apply()
         return applyDemo(context, first)
     }
@@ -557,10 +559,10 @@ object WallpaperRepository {
             Log.w(TAG, "catalog load failed", e)
             listOf(
                 Demo(
-                    "minimal",
-                    "简约",
-                    "wallpaper/demo_minimal_dark.jpg",
-                    "wallpaper/demo_minimal_light.jpg",
+                    "beauty",
+                    "Beauty",
+                    "wallpaper/demo_beauty_dark.jpg",
+                    "wallpaper/demo_beauty_light.jpg",
                 ),
             )
         }

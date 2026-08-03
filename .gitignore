@@ -31,6 +31,8 @@ Thumbs.db
 .env.*
 **/secret*
 **/secrets/
+**/keystore.properties
+android/release.keystore
 
 # --- Logs / scratch ---
 *.log

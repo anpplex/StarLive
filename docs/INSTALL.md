@@ -37,7 +37,25 @@ adb shell "cat /data/local/tmp/starlive_wallpaper.jpg | run-as com.starlive.app 
 
 或把图放到车机 **当前用户** 的 Download（文件管理器复制）。
 
-Release 需自备签名配置（不入库）。
+### Release 签名（可选）
+
+```bash
+# 1) 生成 keystore（仅本地，勿提交）
+cd android
+keytool -genkeypair -v -keystore release.keystore -alias starlive \
+  -keyalg RSA -keysize 2048 -validity 10000
+cp keystore.properties.example keystore.properties
+# 编辑 keystore.properties 填入密码
+
+# 2) 构建
+../scripts/build-release.sh
+# → android/app/build/outputs/apk/release/app-release.apk
+
+# 3) 挂到 GitHub Release（检查更新可下到包）
+../scripts/publish-github-release.sh v0.1.15-quality
+```
+
+无 `keystore.properties` 时 `assembleRelease` 产出 **unsigned** APK，仅供自签。
 
 ## 2. adb 安装（USB 调试）
 

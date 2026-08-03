@@ -45,17 +45,14 @@ object RedeemClient {
                 val codeHttp = conn.responseCode
                 val text = (if (codeHttp in 200..299) conn.inputStream else conn.errorStream)
                     ?.bufferedReader()?.readText().orEmpty()
-                val json = JSONObject(text.ifBlank { "{}" })
-                if (codeHttp !in 200..299 || !json.optBoolean("ok", false)) {
-                    throw RuntimeException(json.optString("error", "兑换失败 ($codeHttp)"))
-                }
+                val parsed = RedeemExchangeParser.parse(codeHttp, text)
                 ExchangeOk(
-                    packId = json.getString("pack_id"),
-                    title = json.optString("title", json.getString("pack_id")),
-                    version = json.optInt("version", 1),
-                    sha256 = json.optString("sha256", ""),
-                    downloadUrl = json.getString("download_url"),
-                    alreadyBound = json.optBoolean("already_bound", false),
+                    packId = parsed.packId,
+                    title = parsed.title,
+                    version = parsed.version,
+                    sha256 = parsed.sha256,
+                    downloadUrl = parsed.downloadUrl,
+                    alreadyBound = parsed.alreadyBound,
                 )
             } finally {
                 conn.disconnect()

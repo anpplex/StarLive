@@ -626,9 +626,10 @@ class MainActivity : AppCompatActivity() {
             "显示设置",
             "恢复内置壁纸",
             "兑换主题",
-            "私人定制",
+            "壁纸定制",
             "升级 Lyra",
             "壁纸规格",
+            "关于作者",
             "关于",
         )
         AlertDialog.Builder(this)
@@ -641,7 +642,8 @@ class MainActivity : AppCompatActivity() {
                     3 -> startActivity(Intent(this, CustomActivity::class.java))
                     4 -> startActivity(Intent(this, UpgradeActivity::class.java))
                     5 -> startActivity(Intent(this, SpecActivity::class.java))
-                    6 -> startActivity(Intent(this, AboutActivity::class.java))
+                    6 -> startActivity(Intent(this, AuthorActivity::class.java))
+                    7 -> startActivity(Intent(this, AboutActivity::class.java))
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)

@@ -55,6 +55,11 @@
             android:screenOrientation="landscape"
             android:theme="@style/Theme.StarLive" />
         <activity
+            android:name=".ui.AuthorActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.StarLive" />
+        <activity
             android:name=".ui.SpecActivity"
             android:exported="false"
             android:screenOrientation="landscape"

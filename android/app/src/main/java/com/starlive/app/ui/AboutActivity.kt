@@ -115,6 +115,9 @@ class AboutActivity : AppCompatActivity() {
             ).apply { topMargin = dp(8) }
             col.addView(b)
         }
+        nav("关于作者") {
+            startActivity(Intent(this, AuthorActivity::class.java))
+        }
         nav("开源仓库") {
             runCatching {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/anpplex/StarLive")))

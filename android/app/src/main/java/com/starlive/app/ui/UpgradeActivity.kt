@@ -25,7 +25,7 @@ class UpgradeActivity : AppCompatActivity() {
         }
         col.addView(UiKit.title(this, "升级 Lyra"))
         col.addView(
-            UiKit.caption(this, "星澜负责空闲壁纸，Lyra 提供歌词与播歌特效")
+            UiKit.caption(this, "星澜是空闲壁纸入门；Lyra 是完整星环体验")
                 .also { it.setPadding(0, dp(6), 0, dp(12)) },
         )
 
@@ -33,8 +33,14 @@ class UpgradeActivity : AppCompatActivity() {
         card.addView(
             UiKit.body(
                 this,
-                "壁纸规格与 Lyra 一致（2990×284）。\n\n" +
-                    "建议步骤：\n" +
+                "Lyra 更完整的能力\n" +
+                    "· 播歌时星环歌词与动态特效（远超静态壁纸）\n" +
+                    "· 更完整的星环占用与场景联动\n" +
+                    "· 商业主题与授权体系\n" +
+                    "· 与星澜相同的壁纸规格（2990×284），可无缝承接你的图\n\n" +
+                    "星澜适合：免费换空闲壁纸、导入与定制。\n" +
+                    "Lyra 适合：要歌词特效、完整体验与持续能力更新。\n\n" +
+                    "升级建议\n" +
                     "1. 安装 Lyra，完成授权并开启总开关\n" +
                     "2. 在 Lyra 中导入壁纸（可读取星澜当前图）\n" +
                     "3. 在星澜关闭「星环壁纸」，或开启「Lyra 优先」\n\n" +
@@ -78,7 +84,8 @@ class UpgradeActivity : AppCompatActivity() {
             cm.setPrimaryClip(
                 ClipData.newPlainText(
                     "upgrade",
-                    "星澜 → Lyra：安装 Lyra → 完成授权并开启总开关 → 导入壁纸。规格 2990×284。",
+                    "星澜 → Lyra：安装 Lyra → 完成授权并开启总开关 → 导入壁纸。" +
+                        "Lyra 提供播歌歌词特效与更完整星环能力；壁纸规格 2990×284 通用。",
                 ),
             )
             Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show()

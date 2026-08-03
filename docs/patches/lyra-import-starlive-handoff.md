@@ -26,3 +26,12 @@ Upgrade → 导出壁纸 writes:
 1. StarLive: 升级到 Lyra → 导出壁纸  
 2. Lyra: 壁纸 → 下载导入  
 3. Optional: close StarLive idle / enable yield-to-Lyra  
+
+## ContentProvider（星澜 0.1.4+，供 Lyra 后续对接）
+
+| URI | 类型 |
+|-----|------|
+| `content://com.starlive.app.handoff/active` | JPEG openFile 只读 |
+| `content://com.starlive.app.handoff/meta` | Cursor：format / activeId / idlePrefer / nightMode / version |
+
+Lyra 可用 `ContentResolver.openInputStream(ACTIVE_URI)` 在已安装星澜时直接拉当前壁纸。

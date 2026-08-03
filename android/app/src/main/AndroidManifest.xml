@@ -104,5 +104,16 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
         </receiver>
+
+        <!-- Read-only for future Lyra ContentResolver import -->
+        <provider
+            android:name=".handoff.HandoffProvider"
+            android:authorities="com.starlive.app.handoff"
+            android:exported="true"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="com.starlive.app.handoff.version"
+                android:value="1" />
+        </provider>
     </application>
 </manifest>

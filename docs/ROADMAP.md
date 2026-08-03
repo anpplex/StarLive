@@ -26,8 +26,10 @@
 
 | 项 | 状态 |
 |----|------|
-| ContentProvider 迁移 · Lyra「从星澜导入」 | ⬜（Lyra 仓配合） |
-| 主题包兑换码 · 多图库 | ⬜ |
+| 多图本地库（导入保留、切换、长按删） | ✅ 0.1.4-lib |
+| ContentProvider handoff（星澜侧） | ✅ 0.1.4-lib `content://com.starlive.app.handoff/*` |
+| Lyra「从星澜 ContentProvider 导入」 | ⬜（Lyra 仓配合） |
+| 主题包兑换码 | ⬜ |
 | ring-wallpaper-core 共享 | ⬜ |
 
 分支命名对齐：`feature/p0-phase1-strip-display` 等。见 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)。

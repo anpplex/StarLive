@@ -180,6 +180,11 @@ object WallpaperRepository {
 
     fun labelForActive(context: Context): String {
         val id = activeId(context)
+        if (id.startsWith("lib:")) {
+            val libId = id.removePrefix("lib:")
+            val item = WallpaperLibrary.list(context).firstOrNull { it.id == libId }
+            return item?.label?.let { "库 · $it" } ?: "自定义"
+        }
         if (id == "custom") {
             val custom = prefs(context).getString(KEY_CUSTOM_LABEL, null)
             return if (custom.isNullOrBlank()) "自定义" else "自定义 · $custom"
@@ -188,6 +193,7 @@ object WallpaperRepository {
     }
 
     fun commitCropped(context: Context, bitmap: Bitmap, label: String = "导入"): Boolean {
+        if (WallpaperLibrary.addAndActivate(context, bitmap, label) != null) return true
         return runCatching {
             val app = context.applicationContext
             FileOutputStream(activeFile(app)).use { out ->
@@ -201,6 +207,15 @@ object WallpaperRepository {
             true
         }.onFailure { Log.w(TAG, "commitCropped failed", it) }.getOrDefault(false)
     }
+
+    fun applyLibraryItem(context: Context, libId: String): Boolean =
+        WallpaperLibrary.apply(context, libId)
+
+    fun libraryItems(context: Context): List<WallpaperLibrary.Item> =
+        WallpaperLibrary.list(context)
+
+    fun deleteLibraryItem(context: Context, libId: String): Boolean =
+        WallpaperLibrary.delete(context, libId)
 
     fun findDownloadCandidate(context: Context): File? {
         val roots = listOfNotNull(

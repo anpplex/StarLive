@@ -42,11 +42,14 @@
 | 装机说明 INSTALL | ✅ `docs/INSTALL.md` |
 | GitHub Actions assembleDebug | ✅ `.github/workflows/android.yml` |
 | adb 一键装机脚本 | ✅ `scripts/install-starlive.sh` |
+| 关于页检查更新 | ✅ 0.1.8-polish（GitHub Releases） |
+| 主题包 VPS 上传脚本 | ✅ `scripts/ops-upload-pack.sh` |
 
 ## 发版
 
 | 版本 | Tag | 说明 |
 |------|-----|------|
 | 0.1.7-core | `v0.1.7-core` | core 模块 + 1.1 功能收口 |
+| 0.1.8-polish | （可选 tag） | 检查更新 · handoff 加固 · ops 脚本 |
 
 分支命名对齐：`feature/p0-phase1-strip-display` 等。见 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)。

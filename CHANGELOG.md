@@ -10,11 +10,23 @@
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
 - 实车矩阵逐项勾选归档
 
+## [0.1.8-polish] — 2026-08-03
+
 ### Added
 
+- 关于页「检查更新」（GitHub Releases，可选联网）
+- `scripts/ops-upload-pack.sh` 上传主题包到 LicenseHub VPS
+
+### Changed
+
+- handoff.json 用 JSONObject 写出，并写入 contentProvider URI
+- 定制页说明兑换码交付方式
+- 隐私：补充「检查更新」联网说明
+
+### Docs (earlier unreleased)
+
 - `docs/QA-MATRIX.md` · `docs/CUSTOM-SOP.md` · `docs/INSTALL.md`
-- GitHub Actions：PR/push `android/**` → assembleDebug + APK artifact
-- `scripts/install-starlive.sh` 一键构建/安装
+- GitHub Actions assembleDebug · `scripts/install-starlive.sh`
 
 ## [0.1.7-core] — 2026-08-03
 

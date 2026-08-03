@@ -13,9 +13,14 @@ StarLive/
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 ├── .gitignore
-├── docs/                   # 权威文档（本树）
-├── android/                # ★ 唯一 Android 工程（Phase 0）
-└── scripts/                # 可选：装机 adb
+├── .github/workflows/      # CI（assembleDebug）
+├── docs/                   # 权威文档
+├── android/
+│   ├── app/                # 产品 App com.starlive.app
+│   └── ring-wallpaper-core/# 共享几何/裁切 com.starlive.ring
+└── scripts/
+    ├── make-theme-pack.sh  # 主题 zip
+    └── install-starlive.sh # adb 装机
 ```
 
 ## 边界

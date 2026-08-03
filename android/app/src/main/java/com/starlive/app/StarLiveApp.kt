@@ -3,6 +3,7 @@ package com.starlive.app
 import android.app.Application
 import android.util.Log
 import com.starlive.app.display.WallpaperCarousel
+import com.starlive.app.night.AmbientWatch
 import com.starlive.app.runtime.BootRecoverScheduler
 import com.starlive.app.runtime.StripOrchestrator
 import com.starlive.app.service.KeepAliveService
@@ -15,15 +16,19 @@ class StarLiveApp : Application() {
         private set
     lateinit var wallpaperCarousel: WallpaperCarousel
         private set
+    lateinit var ambientWatch: AmbientWatch
+        private set
 
     override fun onCreate() {
         super.onCreate()
         orchestrator = StripOrchestrator(this)
         bootScheduler = BootRecoverScheduler(this, orchestrator)
         wallpaperCarousel = WallpaperCarousel(this)
+        ambientWatch = AmbientWatch(this, orchestrator)
         runCatching { WallpaperRepository.ensureSeeded(this) }
             .onFailure { Log.w(TAG, "seed failed", it) }
         orchestrator.refreshLyraHandoff("app-start")
+        ambientWatch.start()
         if (WallpaperRepository.idlePrefer(this) && !orchestrator.isHandedOffToLyra()) {
             runCatching { KeepAliveService.start(this) }
             // Cold-boot often never delivers BOOT to third-party apps on car HUs.
@@ -34,7 +39,11 @@ class StarLiveApp : Application() {
             }
         }
         wallpaperCarousel.syncFromSettings()
-        Log.i(TAG, "StarLiveApp onCreate ${BuildConfig.VERSION_NAME}")
+        Log.i(
+            TAG,
+            "StarLiveApp onCreate ${BuildConfig.VERSION_NAME} " +
+                ambientWatch.debugSnapshot(),
+        )
     }
 
     companion object {

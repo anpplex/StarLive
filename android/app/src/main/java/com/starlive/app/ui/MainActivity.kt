@@ -384,12 +384,20 @@ class MainActivity : AppCompatActivity() {
     private fun buildNightRow(): LinearLayout {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val current = WallpaperRepository.nightMode(this)
-        listOf("auto" to "自动", "dark" to "深色", "light" to "浅色").forEachIndexed { i, (mode, label) ->
+        // 「自动」跟随车机显示模式（浅色1/深色2/自适应9），与 Lyra 远端日夜同源。
+        val autoLabel = run {
+            val eff = (application as? StarLiveApp)?.ambientWatch?.nightMode()?.effectiveLabelZh()
+            if (current == "auto" && eff != null) "自动·$eff" else "自动"
+        }
+        listOf("auto" to autoLabel, "dark" to "深色", "light" to "浅色").forEachIndexed { i, (mode, label) ->
             row.addView(
                 UiKit.chip(this, label, selected = current == mode) {
                     WallpaperRepository.setNightMode(this, mode)
+                    // Force strip re-bake glass dissolve for ambient change.
+                    sendBroadcast(
+                        Intent(ClusterStripActivity.ACTION_RELOAD).setPackage(packageName),
+                    )
                     if (orch.showing || orch.display.isAlive()) orch.applyCurrent("night-$mode")
-                    // rebuild chips selection by re-creating row parent is hard; refresh full night section via recreate chips:
                     (row.parent as? LinearLayout)?.let { parent ->
                         val idx = parent.indexOfChild(row)
                         parent.removeViewAt(idx)

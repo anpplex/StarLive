@@ -35,7 +35,8 @@ class SpecActivity : AppCompatActivity() {
             "· 全条：${StripGeometry.STRIP_W}×${StripGeometry.STRIP_H}\n" +
                 "· 表盘保留（左）：${StripGeometry.GAUGE_RESERVE}px\n" +
                 "· 壁纸带：${StripGeometry.WALLPAPER_W}×${StripGeometry.WALLPAPER_H}\n" +
-                "· 软边羽化：日 ${StripGeometry.EDGE_FEATHER_DAY} / 夜 ${StripGeometry.EDGE_FEATHER_NIGHT}",
+                "· 软边羽化：日 ${StripGeometry.EDGE_FEATHER_DAY} / 夜 ${StripGeometry.EDGE_FEATHER_NIGHT}\n" +
+                "· 日夜玻璃：浅 #E8EAEE / 深 #080A0B（跟车机显示模式，与 Lyra 同源）",
         )
         section(
             "文件命名（Download）",

@@ -1,9 +1,14 @@
 package com.starlive.app.ui
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -15,20 +20,32 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.StarLiveApp
-import com.starlive.ring.StripGeometry
 import com.starlive.app.wallpaper.WallpaperRepository
+import com.starlive.ring.StripGeometry
 
 /**
  * Full-strip surface on cluster display: left gauge reserve + wallpaper band.
+ *
+ * Day/night glass + left dissolve match Lyra OEM remotescreen (base_map #E8EAEE /
+ * base_map_b #080A0B). Bitmap is re-baked when ambient flips; switches use a short
+ * alpha crossfade so the remote edge does not hard-cut.
  */
 class ClusterStripActivity : AppCompatActivity() {
-    private var wallpaperView: ImageView? = null
+    private var root: FrameLayout? = null
+    private var wallpaperPlate: View? = null
+    private var wallpaperA: ImageView? = null
+    private var wallpaperB: ImageView? = null
+    /** True when [wallpaperA] is the visible front layer. */
+    private var frontIsA: Boolean = true
+    private var bakedNightish: Boolean? = null
+    private var crossfadeRunning: Boolean = false
+    private var pendingReload: Boolean = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_FINISH -> finish()
-                ACTION_RELOAD -> reloadWallpaper()
+                ACTION_RELOAD -> reloadWallpaper(animated = true)
             }
         }
     }
@@ -39,33 +56,43 @@ class ClusterStripActivity : AppCompatActivity() {
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
 
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
+        val strip = FrameLayout(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
             layoutParams = FrameLayout.LayoutParams(
                 StripGeometry.STRIP_W,
                 StripGeometry.STRIP_H,
             )
         }
-        // Left gauge reserve — keep transparent/black so OEM glass shows
-        val plate = View(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
-        }
-        val wp = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
-            wallpaperView = this
-        }
-        root.addView(
-            plate,
+        // Left gauge reserve — transparent so OEM instrument glass shows through.
+        strip.addView(
+            View(this).apply { setBackgroundColor(Color.TRANSPARENT) },
             FrameLayout.LayoutParams(StripGeometry.GAUGE_RESERVE, StripGeometry.STRIP_H),
         )
-        root.addView(
-            wp,
-            FrameLayout.LayoutParams(StripGeometry.WALLPAPER_W, StripGeometry.STRIP_H).apply {
-                leftMargin = StripGeometry.GAUGE_RESERVE
-            },
-        )
-        setContentView(root)
-        reloadWallpaper()
+
+        val bandLp = FrameLayout.LayoutParams(
+            StripGeometry.WALLPAPER_W,
+            StripGeometry.STRIP_H,
+        ).apply { leftMargin = StripGeometry.GAUGE_RESERVE }
+
+        // Opaque glass under art — dissolve is baked into the bitmap (Lyra Option A).
+        val plate = View(this).apply {
+            setBackgroundColor(StripGeometry.GLASS_DAY)
+        }
+        wallpaperPlate = plate
+        strip.addView(plate, FrameLayout.LayoutParams(bandLp))
+
+        fun makeWp(): ImageView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            alpha = 0f
+        }
+        wallpaperA = makeWp()
+        wallpaperB = makeWp()
+        strip.addView(wallpaperA, FrameLayout.LayoutParams(bandLp))
+        strip.addView(wallpaperB, FrameLayout.LayoutParams(bandLp))
+
+        root = strip
+        setContentView(strip)
+        reloadWallpaper(animated = false)
         Log.i(TAG, "ClusterStripActivity onCreate display=${display?.displayId}")
     }
 
@@ -83,6 +110,8 @@ class ClusterStripActivity : AppCompatActivity() {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(receiver, filter)
         }
+        // Re-sample ambient in case night flipped while paused.
+        reloadWallpaper(animated = true)
     }
 
     override fun onPause() {
@@ -92,22 +121,97 @@ class ClusterStripActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         (application as? StarLiveApp)?.orchestrator?.display?.onActivityDestroyed()
-        wallpaperView?.setImageBitmap(null)
+        wallpaperA?.setImageBitmap(null)
+        wallpaperB?.setImageBitmap(null)
         super.onDestroy()
     }
 
-    private fun reloadWallpaper() {
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
         val night = WallpaperRepository.isNightish(this)
-        val bmp = WallpaperRepository.decodeActiveForStrip(this, night)
-        wallpaperView?.setImageBitmap(bmp)
+        if (bakedNightish != night) {
+            Log.i(TAG, "config night flip baked=$bakedNightish → $night")
+            reloadWallpaper(animated = true)
+        }
+    }
+
+    private fun front(): ImageView? = if (frontIsA) wallpaperA else wallpaperB
+    private fun back(): ImageView? = if (frontIsA) wallpaperB else wallpaperA
+
+    private fun reloadWallpaper(animated: Boolean) {
+        if (crossfadeRunning) {
+            pendingReload = true
+            return
+        }
+        val night = WallpaperRepository.isNightish(this)
+        val bmp = WallpaperRepository.decodeActiveForStrip(this, night) ?: run {
+            Log.w(TAG, "reloadWallpaper no bitmap night=$night")
+            return
+        }
         val glass = if (night) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
-        // Optional plate under band for soft edge bake match
-        wallpaperView?.setBackgroundColor(glass)
-        Log.i(TAG, "reloadWallpaper night=$night bmp=${bmp?.width}x${bmp?.height}")
+        wallpaperPlate?.setBackgroundColor(glass)
+
+        val snap = (application as? StarLiveApp)?.ambientWatch?.debugSnapshot().orEmpty()
+        Log.i(
+            TAG,
+            "reloadWallpaper night=$night glass=#${Integer.toHexString(glass)} " +
+                "bmp=${bmp.width}x${bmp.height} anim=$animated $snap",
+        )
+
+        val front = front()
+        val back = back()
+        if (front == null || back == null) {
+            bmp.recycle()
+            return
+        }
+
+        // First paint — no crossfade.
+        if (front.drawable == null || !animated || bakedNightish == null) {
+            front.setImageBitmap(bmp)
+            front.alpha = 1f
+            back.alpha = 0f
+            back.setImageBitmap(null)
+            bakedNightish = night
+            return
+        }
+
+        // Same ambient + same content path: still swap with short fade for apply/reload.
+        presentWithCrossfade(back, front, bmp, night)
+    }
+
+    private fun presentWithCrossfade(
+        incoming: ImageView,
+        outgoing: ImageView,
+        bmp: Bitmap,
+        night: Boolean,
+    ) {
+        crossfadeRunning = true
+        incoming.setImageBitmap(bmp)
+        incoming.alpha = 0f
+        incoming.bringToFront()
+
+        val fadeIn = ObjectAnimator.ofFloat(incoming, View.ALPHA, 0f, 1f).setDuration(CROSSFADE_MS)
+        val fadeOut = ObjectAnimator.ofFloat(outgoing, View.ALPHA, 1f, 0f).setDuration(CROSSFADE_MS)
+        fadeIn.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                outgoing.setImageBitmap(null)
+                outgoing.alpha = 0f
+                frontIsA = incoming === wallpaperA
+                bakedNightish = night
+                crossfadeRunning = false
+                if (pendingReload) {
+                    pendingReload = false
+                    reloadWallpaper(animated = true)
+                }
+            }
+        })
+        fadeOut.start()
+        fadeIn.start()
     }
 
     companion object {
         private const val TAG = "StarLive"
+        private const val CROSSFADE_MS = 320L
         const val EXTRA_DISPLAY_ID = "display_id"
         const val ACTION_FINISH = "com.starlive.app.ACTION_STRIP_FINISH"
         const val ACTION_RELOAD = "com.starlive.app.ACTION_STRIP_RELOAD"

@@ -31,6 +31,10 @@ class BootRecoverScheduler(
 
     private fun tick(reason: String) {
         if (!WallpaperRepository.idlePrefer(app)) return
+        if (orchestrator.isHandedOffToLyra()) {
+            Log.i(TAG, "boot tick skip lyra handoff ($reason)")
+            return
+        }
         if (orchestrator.isEffectivelyPlaying()) {
             Log.i(TAG, "boot tick skip playing ($reason)")
             return

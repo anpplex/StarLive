@@ -92,6 +92,22 @@ class AboutActivity : AppCompatActivity() {
                 }
             },
         )
+        col.addView(
+            btn("通知使用权（播歌让出）") {
+                BatteryHelper.openNotificationListenerSettings(this)
+            },
+        )
+        col.addView(
+            btn("电池优化 / 自启动") {
+                BatteryHelper.openBatterySettings(this)
+                Toast.makeText(
+                    this,
+                    if (BatteryHelper.isIgnoringOptimizations(this)) "已忽略电池优化"
+                    else "请允许星澜忽略电池优化，利于开机恢复",
+                    Toast.LENGTH_LONG,
+                ).show()
+            },
+        )
         col.addView(btn("关闭") { finish() })
 
         setContentView(

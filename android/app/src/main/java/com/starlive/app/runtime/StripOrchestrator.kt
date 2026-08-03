@@ -4,10 +4,11 @@ import android.app.Application
 import android.util.Log
 import com.starlive.app.display.ClusterDisplayController
 import com.starlive.app.service.KeepAliveService
+import com.starlive.app.upgrade.LyraPresence
 import com.starlive.app.wallpaper.WallpaperRepository
 
 /**
- * Single entry for show / release strip + play yield + pending apply.
+ * Single entry for show / release strip + play yield + Lyra handoff + pending apply.
  */
 class StripOrchestrator(private val app: Application) {
     val display = ClusterDisplayController(app)
@@ -19,6 +20,7 @@ class StripOrchestrator(private val app: Application) {
             onResumeAfterPlay()
         }
         KeepAliveService.refresh(app)
+        (app as? com.starlive.app.StarLiveApp)?.wallpaperCarousel?.reschedule()
     }
 
     @Volatile
@@ -29,13 +31,49 @@ class StripOrchestrator(private val app: Application) {
     var showing: Boolean = false
         private set
 
+    @Volatile
+    private var handedOffToLyra: Boolean = false
+
     fun isEffectivelyPlaying(): Boolean = playbackGate.isEffectivelyPlaying()
+
+    fun isHandedOffToLyra(): Boolean = handedOffToLyra
 
     fun onRawPlaying(playing: Boolean) {
         playbackGate.setRawPlaying(playing)
     }
 
+    /** Call on resume / package change: yield strip if Lyra installed and policy on. */
+    fun refreshLyraHandoff(reason: String): Boolean {
+        val should = WallpaperRepository.yieldWhenLyraInstalled(app) &&
+            LyraPresence.isInstalled(app)
+        if (should == handedOffToLyra) {
+            if (should) Log.i(TAG, "lyra handoff still active ($reason)")
+            return should
+        }
+        handedOffToLyra = should
+        if (should) {
+            Log.i(TAG, "lyra handoff ON ($reason)")
+            release("lyra-handoff")
+            KeepAliveService.stop(app)
+        } else {
+            Log.i(TAG, "lyra handoff OFF ($reason)")
+            if (WallpaperRepository.idlePrefer(app)) {
+                KeepAliveService.start(app)
+                if (!playbackGate.isEffectivelyPlaying()) {
+                    applyCurrent("lyra-handoff-off")
+                }
+            }
+        }
+        return should
+    }
+
     fun applyCurrent(reason: String): Boolean {
+        refreshLyraHandoff("before-apply")
+        if (handedOffToLyra) {
+            lastError = "lyra-handoff"
+            Log.i(TAG, "apply skip lyra handoff ($reason)")
+            return false
+        }
         if (!WallpaperRepository.idlePrefer(app)) {
             Log.i(TAG, "apply skip idle off ($reason)")
             release("idle-off")
@@ -69,7 +107,9 @@ class StripOrchestrator(private val app: Application) {
 
     fun setIdlePrefer(value: Boolean) {
         WallpaperRepository.setIdlePrefer(app, value)
+        (app as? com.starlive.app.StarLiveApp)?.wallpaperCarousel?.syncFromSettings()
         if (value) {
+            if (refreshLyraHandoff("idle-on")) return
             KeepAliveService.start(app)
             if (playbackGate.isEffectivelyPlaying()) {
                 PendingApplyStore.setPending(app, true)
@@ -86,6 +126,7 @@ class StripOrchestrator(private val app: Application) {
 
     private fun onYieldPlaying() {
         if (!WallpaperRepository.idlePrefer(app)) return
+        if (handedOffToLyra) return
         if (showing || display.isAlive()) {
             release("play-yield")
         }
@@ -93,11 +134,9 @@ class StripOrchestrator(private val app: Application) {
 
     private fun onResumeAfterPlay() {
         if (!WallpaperRepository.idlePrefer(app)) return
+        if (handedOffToLyra) return
         if (!WallpaperRepository.hasImage(app)) return
-        if (PendingApplyStore.isPending(app) || true) {
-            // Always try re-show after play ends when idle on
-            applyCurrent("after-play")
-        }
+        applyCurrent("after-play")
     }
 
     companion object {

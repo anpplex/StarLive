@@ -6,7 +6,7 @@
 | 状态 | **交互终稿**（2026-08-03）· 含播歌让出、开机 A、审计默认全采纳 |
 | 产品 | 中文 **星澜** · 英文 **StarLive** |
 | 方案 | **A**（开源工具 + 私人定制） |
-| 上游 | [FEATURE-ALIGNMENT-1.0.md](./FEATURE-ALIGNMENT-1.0.md) |
+| 上游 | [PRODUCT_BOUNDARIES.md](./PRODUCT_BOUNDARIES.md) · [DECISIONS.md](./DECISIONS.md) |
 | 参考 | 凯迪壁纸漏斗（设置成功感）· Lyra 驾驶舱（英雄预览条） |
 
 ---
@@ -696,7 +696,7 @@ P0.5 才考虑：轮播间隔选择器（对话框滚轮，不嵌滚动冲突）
 | 失败 | **禁止开机弹窗**；进 App 再提示 |
 | UI | 无独立开关；见 `switch_idle_caption` |
 
-历史缺口跟踪：[AUDIT-GAPS-1.0.md](./AUDIT-GAPS-1.0.md)（§1 默认项以本文为准）。
+决议摘要：[DECISIONS.md](./DECISIONS.md)。
 
 ---
 

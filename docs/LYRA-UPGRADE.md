@@ -7,7 +7,7 @@
 | 关系 | StarLive = **Lyra 生态子项目**（引流层）；Lyra = 歌词特效 + 完整座舱能力 |
 | 目标 | 用户从「只会换壁纸」升到 Lyra 时：**少步骤、不丢壁纸、不双抢星环、心智连续** |
 
-相关：[FEATURE-ALIGNMENT-1.0.md](./FEATURE-ALIGNMENT-1.0.md) · [INTERACTION-1.0.md](./INTERACTION-1.0.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)
+相关：[INTERACTION-1.0.md](./INTERACTION-1.0.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md) · [DECISIONS.md](./DECISIONS.md)
 
 ---
 
@@ -176,7 +176,7 @@
 
 ### 6.3 Lyra 侧（主仓后续，本文约束对方）
 
-Lyra 应增加（版本规划，不阻塞星澜 1.0 开工但要记 ROADMAP）：
+Lyra 应增加（版本规划，不阻塞星澜 1.0）：
 
 | 能力 | 说明 |
 |------|------|

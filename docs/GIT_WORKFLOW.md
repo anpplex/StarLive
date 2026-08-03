@@ -39,7 +39,7 @@
 | `chore/<topic>` | 工程：脚手架、依赖、gitignore |
 | `docs/<topic>` | 仅文档 |
 
-命名尽量对齐 `docs/ROADMAP.md` / TECH Phase：
+命名尽量对齐版本主题 / TECH Phase：
 
 ```text
 chore/android-skeleton
@@ -58,7 +58,7 @@ docs/privacy
 2. git checkout -b feature/<topic>
 3. 只改 android/ + 必要 docs
 4. cd android && ./gradlew :app:assembleDebug   # 有工程后
-5. 车机验证（若有）+ 更新 ROADMAP 勾选
+5. 车机验证（若有）+ 更新 CHANGELOG
 6. git add -p && git commit
 7. git push -u origin HEAD
 8. 开 PR → 自检 → 合并 main
@@ -111,7 +111,7 @@ git push -u origin main
 
 - [ ] 有 `android/` 时：`./gradlew :app:assembleDebug` 成功  
 - [ ] 未提交 APK、密钥、`local.properties`  
-- [ ] 行为变更已更新 `docs/`（ROADMAP / INTERACTION 修订记录如需）  
+- [ ] 行为变更已更新 `docs/` / CHANGELOG（如需）  
 - [ ] Manifest 变更：说明权限/组件原因  
 - [ ] 显示/播控/开机：注明是否实车已验  
 - [ ] **未破坏** 2990×284 / handoff / `lyra_wallpaper` 兼容（[LYRA-UPGRADE](./LYRA-UPGRADE.md)）  
@@ -135,11 +135,11 @@ APK **不进 Git**；本地 `releases/` 可忽略二进制，仅跟踪说明 md�
 
 ---
 
-## 7. 与路线图联动
+## 7. 文档联动
 
 | 动作 | 文档 |
 |------|------|
-| 完成 Phase | `docs/ROADMAP.md` 勾选 + 日期 |
+| 发版 / 行为变更 | `CHANGELOG.md` |
 | 改产品边界 | `PRODUCT_BOUNDARIES` + `DECISIONS` |
 | 升级契约变更 | 必须改 `LYRA-UPGRADE.md` 并评估 Lyra 主仓 |
 
@@ -147,7 +147,7 @@ APK **不进 Git**；本地 `releases/` 可忽略二进制，仅跟踪说明 md�
 
 ## 8. 默认节奏
 
-- **Keep dev**：无阻塞时持续按 ROADMAP 开发，不逐步请示。
+- **Keep dev**：无阻塞时持续推进，不逐步请示。
 - **停下问人**：仅 bug 歧义，或重要决策（边界 / 升级契约 / 商业模式 / 包名变更等）。
 
 ## 9. 修订

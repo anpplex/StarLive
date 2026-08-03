@@ -2,21 +2,21 @@ package com.starlive.app.ui
 
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.StarLiveApp
-import com.starlive.ring.StripGeometry
 import com.starlive.app.runtime.PendingApplyStore
-import com.starlive.ring.WallpaperCropper
+import com.starlive.app.ui.UiTokens.applyRoundedBg
+import com.starlive.app.ui.UiTokens.dp
 import com.starlive.app.wallpaper.WallpaperRepository
+import com.starlive.ring.StripGeometry
+import com.starlive.ring.WallpaperCropper
 import java.io.File
 
 /**
@@ -24,85 +24,80 @@ import java.io.File
  */
 class ImportConfirmActivity : AppCompatActivity() {
     private var cropped: Bitmap? = null
-    private var strategyLabel: String = ""
     private var sourceLabel: String = "导入"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dens = resources.displayMetrics.density
-        fun dp(v: Int) = (v * dens).toInt()
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0B0E12"))
+            setBackgroundColor(UiTokens.bg)
             setPadding(dp(20), dp(16), dp(20), dp(16))
         }
+        root.addView(UiKit.title(this, "确认壁纸"))
         root.addView(
-            TextView(this).apply {
-                text = "确认壁纸"
-                setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-            },
+            UiKit.caption(this, "预览左侧为表盘保留区 · 确认后写入图库并尝试上屏")
+                .also { it.setPadding(0, dp(6), 0, dp(12)) },
         )
 
-        val heroH = dp(64)
+        val card = UiKit.card(this)
+        val heroH = dp(72)
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#151A22"))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 heroH,
-            ).apply { topMargin = dp(12) }
+            )
+            applyRoundedBg(UiTokens.heroBg, 10f)
         }
         val gaugeW = heroH * StripGeometry.GAUGE_RESERVE / StripGeometry.STRIP_H
         hero.addView(
             TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(gaugeW, heroH)
-                setBackgroundColor(Color.parseColor("#2A303A"))
+                applyRoundedBg(UiTokens.gaugeBg, 0f)
                 gravity = Gravity.CENTER
                 text = "表盘"
-                setTextColor(Color.parseColor("#5A6578"))
+                setTextColor(UiTokens.textMuted)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             },
         )
         val preview = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_XY
             layoutParams = LinearLayout.LayoutParams(0, heroH, 1f)
+            contentDescription = "裁切预览"
         }
         hero.addView(preview)
-        root.addView(hero)
+        card.addView(hero)
 
         val info = TextView(this).apply {
-            setTextColor(Color.parseColor("#9AABB8"))
+            setTextColor(UiTokens.textSecondary)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(0, dp(10), 0, dp(16))
+            setPadding(0, dp(12), 0, dp(4))
+            setLineSpacing(0f, 1.25f)
         }
-        root.addView(info)
+        card.addView(info)
+        root.addView(card)
 
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(16) }
+        }
         row.addView(
-            Button(this).apply {
-                text = "取消"
-                isAllCaps = false
-                setBackgroundColor(Color.parseColor("#243040"))
-                setTextColor(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) }
-                setOnClickListener {
-                    cropped?.recycle()
-                    setResult(RESULT_CANCELED)
-                    finish()
-                }
+            UiKit.secondaryButton(this, "取消") {
+                cropped?.recycle()
+                setResult(RESULT_CANCELED)
+                finish()
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = dp(8)
             },
         )
         row.addView(
-            Button(this).apply {
-                text = "应用上屏"
-                isAllCaps = false
-                setBackgroundColor(Color.parseColor("#3D6FE0"))
-                setTextColor(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f)
-                setOnClickListener { commitAndApply() }
-            },
+            UiKit.primaryButton(this, "应用上屏") { commitAndApply() },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f),
         )
         root.addView(row)
         setContentView(root)
@@ -115,10 +110,10 @@ class ImportConfirmActivity : AppCompatActivity() {
             return
         }
         cropped = result.bitmap
-        strategyLabel = result.strategyLabelZh
         sourceLabel = intent.getStringExtra(EXTRA_LABEL) ?: "导入"
         preview.setImageBitmap(result.bitmap)
-        info.text = "原图 ${result.sourceW}×${result.sourceH}\n$strategyLabel\n左侧表盘区不放贴图。"
+        info.text =
+            "原图 ${result.sourceW}×${result.sourceH}\n${result.strategyLabelZh}\n左侧表盘区不放贴图 · 点应用写入图库"
     }
 
     private fun loadCrop(): WallpaperCropper.Result? {
@@ -126,6 +121,7 @@ class ImportConfirmActivity : AppCompatActivity() {
         if (!path.isNullOrBlank()) {
             return WallpaperCropper.decodeAndCrop(File(path))
         }
+        @Suppress("DEPRECATION")
         val uri = intent.getParcelableExtra<android.net.Uri>(EXTRA_URI)
         if (uri != null) {
             return contentResolver.openInputStream(uri)?.use { WallpaperCropper.decodeAndCrop(it) }
@@ -140,10 +136,8 @@ class ImportConfirmActivity : AppCompatActivity() {
             return
         }
         val orch = (application as StarLiveApp).orchestrator
-        // Phase 3: if playing → pending only
         val ok = orch.applyCurrent("import-confirm")
         if (!ok && WallpaperRepository.idlePrefer(this)) {
-            // Still saved; mark pending if we later add play gate
             PendingApplyStore.setPending(this, true)
         } else {
             PendingApplyStore.clear(this)
@@ -155,11 +149,6 @@ class ImportConfirmActivity : AppCompatActivity() {
         ).show()
         setResult(RESULT_OK)
         finish()
-    }
-
-    override fun onDestroy() {
-        // Don't recycle if committed — ImageView may still hold; only recycle cancel path
-        super.onDestroy()
     }
 
     companion object {

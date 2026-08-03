@@ -1,0 +1,48 @@
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+*.iml
+.vscode/
+*.hprof
+**/.kotlin/
+
+# --- Android / Gradle ---
+**/build/
+**/.gradle/
+**/local.properties
+**/.cxx/
+**/captures/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# --- Secrets ---
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+.env
+.env.*
+**/secret*
+**/secrets/
+
+# --- Logs / scratch ---
+*.log
+logcat*.txt
+.grok-collaborator/
+.grok/
+
+# --- Node (if scripts later) ---
+node_modules/
+
+# --- Large / reverse engineering (never track) ---
+**/*.zip
+**/jadx*/**
+research/apks/
+research/decompile/

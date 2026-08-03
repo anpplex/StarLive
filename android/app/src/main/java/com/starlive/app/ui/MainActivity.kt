@@ -1,7 +1,9 @@
 package com.starlive.app.ui
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -12,6 +14,8 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
 import com.starlive.app.R
@@ -20,8 +24,7 @@ import com.starlive.app.display.StripGeometry
 import com.starlive.app.wallpaper.WallpaperRepository
 
 /**
- * Phase 1 cockpit: preview + apply + demos + idle switch.
- * Import / custom / night full UI land Phase 2–4.
+ * Home cockpit: preview + apply + import + demos + idle switch.
  */
 class MainActivity : AppCompatActivity() {
     private lateinit var preview: ImageView
@@ -30,6 +33,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var heroSub: TextView
 
     private val orch get() = (application as StarLiveApp).orchestrator
+
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "相册"))
+    }
+
+    private val requestReadImages = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            openDownloadImport()
+        } else {
+            Toast.makeText(this, R.string.need_storage, Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,9 +139,7 @@ class MainActivity : AppCompatActivity() {
                 marginEnd = dp(8)
             }
         })
-        row.addView(secondaryBtn("导入图片") {
-            Toast.makeText(this, "Phase 2：导入与裁切", Toast.LENGTH_SHORT).show()
-        }.also {
+        row.addView(secondaryBtn("导入图片") { showImportSheet() }.also {
             (it.layoutParams as LinearLayout.LayoutParams).apply {
                 width = 0
                 weight = 1f
@@ -172,12 +188,28 @@ class MainActivity : AppCompatActivity() {
         chipScroll.addView(chips)
         root.addView(chipScroll)
 
+        val sourceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, dp(8))
+        }
         sourceTv = TextView(this).apply {
             setTextColor(Color.parseColor("#C5D0E0"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(0, dp(12), 0, dp(8))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        root.addView(sourceTv)
+        sourceRow.addView(sourceTv)
+        sourceRow.addView(
+            Button(this).apply {
+                text = "恢复示范"
+                isAllCaps = false
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setBackgroundColor(Color.parseColor("#243040"))
+                setTextColor(Color.parseColor("#D0D8E8"))
+                setOnClickListener { confirmRestoreDemo() }
+            },
+        )
+        root.addView(sourceRow)
 
         // Idle switch
         val idleRow = LinearLayout(this).apply {
@@ -237,6 +269,69 @@ class MainActivity : AppCompatActivity() {
             if (ok) getString(R.string.toast_applied) else getString(R.string.toast_apply_fail),
             Toast.LENGTH_SHORT,
         ).show()
+    }
+
+    private fun showImportSheet() {
+        val items = arrayOf(
+            getString(R.string.import_from_picker),
+            getString(R.string.import_from_download),
+            getString(R.string.import_filename_help),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.import_sheet_title)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> openPicker()
+                    1 -> openDownloadImport()
+                    2 -> showFilenameHelp()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun openPicker() {
+        runCatching {
+            pickImage.launch("image/*")
+        }.onFailure {
+            Toast.makeText(this, R.string.picker_unavailable, Toast.LENGTH_LONG).show()
+            openDownloadImport()
+        }
+    }
+
+    private fun openDownloadImport() {
+        val f = WallpaperRepository.findDownloadCandidate(this)
+        if (f == null) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.no_download_title)
+                .setMessage(R.string.no_download_msg)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNeutralButton(R.string.import_filename_help) { _, _ -> showFilenameHelp() }
+                .show()
+            return
+        }
+        startActivity(ImportConfirmActivity.intentFromPath(this, f.absolutePath, f.name))
+    }
+
+    private fun showFilenameHelp() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.import_filename_help)
+            .setMessage(R.string.import_filename_detail)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun confirmRestoreDemo() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.restore_title)
+            .setMessage(R.string.restore_msg)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.restore_demo) { _, _ ->
+                WallpaperRepository.restoreDemo(this)
+                refreshUi()
+                Toast.makeText(this, R.string.restore_done, Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     private fun refreshUi() {

@@ -9,6 +9,14 @@
 - 在线主题商店（非兑换码路径）
 - QA 剩余 ⬜：M3 实车切歌；I1 第三方文件管理器内完整点选（选择器已通）
 
+## [0.1.24-cache] — 2026-08-03
+
+### Perf / Import
+
+- `decodeActiveForStrip` 按 path·mtime·night 缓存，避免首页/星环重复羽化
+- 日夜 ambient 刷新时重建「自动·浅/深」chip 与示范轨
+- 导入优先 **SAF OpenDocument**（车机多用户更稳），失败回落 GetContent
+
 ## [0.1.23-preview] — 2026-08-03
 
 ### UX

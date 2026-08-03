@@ -46,14 +46,35 @@ class MainActivity : AppCompatActivity() {
 
     private val orch get() = (application as StarLiveApp).orchestrator
 
+    private var nightRowHost: LinearLayout? = null
+
     private val uiRefreshReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == StripOrchestrator.ACTION_UI_REFRESH) {
                 runOnUiThread {
-                    if (::statusTv.isInitialized) refreshUi()
+                    if (!::statusTv.isInitialized) return@runOnUiThread
+                    val reason = intent.getStringExtra(StripOrchestrator.EXTRA_REASON).orEmpty()
+                    // Ambient flip may change 「自动·浅色/深色」chip + demo dual assets.
+                    if (reason.startsWith("ambient")) {
+                        rebuildNightRow()
+                        rebuildDemoChips()
+                    }
+                    refreshUi()
                 }
             }
         }
+    }
+
+    /** SAF document picker — more reliable on multi-user car HUs than plain GetContent. */
+    private val pickDocument = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        }
+        startActivity(ImportConfirmActivity.intentFromUri(this, uri, "文件"))
     }
 
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -382,6 +403,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildNightRow(): LinearLayout {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        nightRowHost = row
         val current = WallpaperRepository.nightMode(this)
         // 「自动」跟随车机显示模式（浅色1/深色2/自适应9），与 Lyra 远端日夜同源。
         val autoLabel = run {
@@ -392,16 +414,13 @@ class MainActivity : AppCompatActivity() {
             row.addView(
                 UiKit.chip(this, label, selected = current == mode) {
                     WallpaperRepository.setNightMode(this, mode)
+                    WallpaperRepository.invalidateStripCache()
                     // Force strip re-bake glass dissolve for ambient change.
                     sendBroadcast(
                         Intent(ClusterStripActivity.ACTION_RELOAD).setPackage(packageName),
                     )
                     if (orch.showing || orch.display.isAlive()) orch.applyCurrent("night-$mode")
-                    (row.parent as? LinearLayout)?.let { parent ->
-                        val idx = parent.indexOfChild(row)
-                        parent.removeViewAt(idx)
-                        parent.addView(buildNightRow(), idx)
-                    }
+                    rebuildNightRow()
                     refreshUi()
                 }.also {
                     it.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -411,6 +430,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
         return row
+    }
+
+    private fun rebuildNightRow() {
+        val host = nightRowHost ?: return
+        val parent = host.parent as? LinearLayout ?: return
+        val idx = parent.indexOfChild(host)
+        if (idx < 0) return
+        parent.removeViewAt(idx)
+        parent.addView(buildNightRow(), idx)
     }
 
     private fun buildFooterLinks(): LinearLayout {
@@ -572,6 +600,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openPicker() {
+        // Prefer SAF OpenDocument (I1: multi-user car + ES/DocumentsUI).
+        val opened = runCatching {
+            pickDocument.launch(arrayOf("image/*", "image/jpeg", "image/png"))
+            true
+        }.getOrDefault(false)
+        if (opened) return
         runCatching {
             pickImage.launch("image/*")
         }.onFailure {

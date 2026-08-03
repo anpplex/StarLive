@@ -48,6 +48,7 @@ object WallpaperLibrary {
                 .putString("active_id", "lib:$id")
                 .putString("custom_label", label)
                 .apply()
+            WallpaperRepository.invalidateStripCache()
             val items = list(app).toMutableList()
             items.add(0, Item(id, label, fileName))
             while (items.size > MAX_ITEMS) {
@@ -70,6 +71,7 @@ object WallpaperLibrary {
                 .putString("active_id", "lib:$id")
                 .putString("custom_label", item.label)
                 .apply()
+            WallpaperRepository.invalidateStripCache()
             true
         }.getOrDefault(false)
     }

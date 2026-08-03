@@ -181,6 +181,7 @@ object WallpaperRepository {
                 .putString(KEY_ACTIVE_ID, themeId)
                 .remove(KEY_CUSTOM_LABEL) // drop stale「夜色」等库标签
                 .apply()
+            invalidateStripCache()
             true
         }.onFailure { Log.w(TAG, "applyDemo failed $themeId $asset", it) }.getOrDefault(false)
     }
@@ -211,6 +212,7 @@ object WallpaperRepository {
                 .putString(KEY_ACTIVE_ID, "custom")
                 .putString(KEY_CUSTOM_LABEL, label)
                 .apply()
+            invalidateStripCache()
             true
         }.onFailure { Log.w(TAG, "commitCropped failed", it) }.getOrDefault(false)
     }
@@ -450,14 +452,28 @@ object WallpaperRepository {
         }.onFailure { Log.w(TAG, "export MediaStore failed $relativeName", it) }.getOrDefault(false)
     }
 
+    /**
+     * Decode + left-edge glass bake for cluster / home preview.
+     * Cached by path · mtime · length · nightish (softener is CPU-heavy on HU).
+     */
     fun decodeActiveForStrip(context: Context, nightish: Boolean): Bitmap? {
         ensureSeeded(context)
         val f = activeFile(context)
         if (!f.isFile) return null
+        val path = f.absolutePath
+        val mtime = f.lastModified()
+        val length = f.length()
+        stripCache?.let { hit ->
+            if (hit.path == path && hit.mtime == mtime && hit.length == length &&
+                hit.nightish == nightish && !hit.bmp.isRecycled
+            ) {
+                return hit.bmp
+            }
+        }
         val opts = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        val raw = BitmapFactory.decodeFile(f.absolutePath, opts) ?: return null
+        val raw = BitmapFactory.decodeFile(path, opts) ?: return null
         val scaled = if (raw.width != StripGeometry.WALLPAPER_W || raw.height != StripGeometry.WALLPAPER_H) {
             Bitmap.createScaledBitmap(raw, StripGeometry.WALLPAPER_W, StripGeometry.WALLPAPER_H, true).also {
                 if (it !== raw) raw.recycle()
@@ -467,8 +483,25 @@ object WallpaperRepository {
         }
         val fade = if (nightish) StripGeometry.EDGE_FEATHER_NIGHT else StripGeometry.EDGE_FEATHER_DAY
         val glass = if (nightish) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
-        return WallpaperEdgeSoftener.softenLeftEdge(scaled, fade, glass)
+        val baked = WallpaperEdgeSoftener.softenLeftEdge(scaled, fade, glass)
+        stripCache = StripCache(path, mtime, length, nightish, baked)
+        return baked
     }
+
+    fun invalidateStripCache() {
+        stripCache = null
+    }
+
+    private data class StripCache(
+        val path: String,
+        val mtime: Long,
+        val length: Long,
+        val nightish: Boolean,
+        val bmp: Bitmap,
+    )
+
+    @Volatile
+    private var stripCache: StripCache? = null
 
     /**
      * Day/night for edge bake + demo asset pick.

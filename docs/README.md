@@ -14,5 +14,6 @@
 | [PRIVACY.md](./PRIVACY.md) | 隐私与权限 | 已定 |
 | [AUDIT-GAPS-1.0.md](./AUDIT-GAPS-1.0.md) | 产品缺口审计 | 归档参考 |
 | [AUDIT-DEV-DOCS.md](./AUDIT-DEV-DOCS.md) | 开发文档缺口审计 | 归档参考 |
+| [SECURITY-REDEEM-CODES.md](./SECURITY-REDEEM-CODES.md) | 主题兑换码安全架构 | 设计 |
 
 根目录：[README](../README.md) · [AGENTS](../AGENTS.md) · [CONTRIBUTING](../CONTRIBUTING.md) · [LICENSE](../LICENSE)

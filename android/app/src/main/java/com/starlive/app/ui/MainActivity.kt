@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -633,9 +632,11 @@ class MainActivity : AppCompatActivity() {
     private fun refreshUi() {
         if (!::sourceTv.isInitialized) return
         sourceTv.text = "当前来源 · ${WallpaperRepository.labelForActive(this)}"
-        val f = WallpaperRepository.activeFile(this)
-        if (f.isFile && ::preview.isInitialized) {
-            preview.setImageBitmap(BitmapFactory.decodeFile(f.absolutePath))
+        // Same bake as ClusterStrip (left edge dissolve + glass) so preview ≈ remote.
+        if (::preview.isInitialized) {
+            val night = WallpaperRepository.isNightish(this)
+            val bmp = WallpaperRepository.decodeActiveForStrip(this, night)
+            if (bmp != null) preview.setImageBitmap(bmp)
         }
         val idle = WallpaperRepository.idlePrefer(this)
         orch.syncShowingFromDisplay()

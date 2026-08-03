@@ -8,8 +8,6 @@ cd android
 ./gradlew :ring-wallpaper-core:testDebugUnitTest :app:testDebugUnitTest
 ```
 
-车机安装见 [README.md](./README.md)（旁路安装，勿用普通 `adb install`）。
-
 ## 约定
 
 - 自 `main` 开分支，PR 合并  

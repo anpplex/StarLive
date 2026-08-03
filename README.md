@@ -38,30 +38,6 @@ APK：`android/app/build/outputs/apk/debug/app-debug.apk`
 
 更多版本说明见 [CHANGELOG.md](./CHANGELOG.md)。
 
-## 车机安装（阿维塔 / 华为）
-
-普通 `adb install` 会失败（`INSTALL_FAILED_INTERNAL_ERROR`）。需旁路安装：
-
-```bash
-SERIAL=<你的序列号>
-APK=android/app/build/outputs/apk/debug/app-debug.apk
-REMOTE=/data/local/tmp/starlive.apk
-PKG=com.starlive.app
-
-adb -s "$SERIAL" push "$APK" "$REMOTE"
-adb -s "$SERIAL" shell pm disable-user --user 12 com.android.packageinstaller
-adb -s "$SERIAL" shell pm disable-user --user 0 com.android.packageinstaller || true
-adb -s "$SERIAL" shell pm install -r -d -g -t -i com.huawei.appinstaller.car --user 12 "$REMOTE"
-adb -s "$SERIAL" shell pm install -r -d -g -t -i com.huawei.appinstaller.car --user 0 "$REMOTE" || true
-adb -s "$SERIAL" shell pm enable --user 12 com.android.packageinstaller || true
-adb -s "$SERIAL" shell pm enable --user 0 com.android.packageinstaller || true
-adb -s "$SERIAL" shell rm -f "$REMOTE"
-adb -s "$SERIAL" shell pm enable --user 12 "$PKG" || true
-adb -s "$SERIAL" shell am start --user 12 -n "$PKG/.ui.MainActivity" || true
-```
-
-也可直接从 [Releases](https://github.com/anpplex/StarLive/releases/latest) 下载 APK，再按上式安装。
-
 ## 免责声明
 
 第三方工具，与阿维塔、华为官方无关。请在车辆静止时设置壁纸。系统升级可能导致功能变化或失效。

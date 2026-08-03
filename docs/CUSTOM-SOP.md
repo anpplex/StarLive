@@ -56,6 +56,14 @@
 - 发 `starlive_wallpaper.jpg`，说明放 Download 后点「导入」  
 - 适合内测 / 熟人；**无防扩散**  
 
+### 上传脚本
+
+```bash
+export LICENSEHUB_VPS=root@98.126.31.173
+./scripts/ops-upload-pack.sh ./dist/pack_client.zip
+# 然后 Admin 登记 + 发码
+```
+
 ---
 
 ## 4. 修改与售后

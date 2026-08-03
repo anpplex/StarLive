@@ -258,19 +258,19 @@ object WallpaperRepository {
             active.copyTo(File(starliveDir, "lyra_wallpaper.jpg"), overwrite = true)
             active.copyTo(File(downloadRoot, "starlive_wallpaper.jpg"), overwrite = true)
             active.copyTo(File(downloadRoot, "lyra_wallpaper.jpg"), overwrite = true)
-            val json = buildString {
-                append("{\n")
-                append("  \"format\": \"starlive-handoff/v1\",\n")
-                append("  \"activeId\": \"${activeId(context)}\",\n")
-                append("  \"idlePrefer\": ${idlePrefer(context)},\n")
-                append("  \"nightMode\": \"${nightMode(context)}\",\n")
-                append("  \"starliveVersion\": \"$versionName\",\n")
-                append("  \"files\": {\n")
-                append("    \"active\": \"active_wallpaper.jpg\",\n")
-                append("    \"lyra_wallpaper\": \"lyra_wallpaper.jpg\"\n")
-                append("  }\n")
-                append("}\n")
-            }
+            val files = JSONObject()
+                .put("active", "active_wallpaper.jpg")
+                .put("lyra_wallpaper", "lyra_wallpaper.jpg")
+                .put("starlive_wallpaper", "starlive_wallpaper.jpg")
+            val json = JSONObject()
+                .put("format", "starlive-handoff/v1")
+                .put("activeId", activeId(context))
+                .put("idlePrefer", idlePrefer(context))
+                .put("nightMode", nightMode(context))
+                .put("starliveVersion", versionName)
+                .put("contentProvider", "content://com.starlive.app.handoff/active")
+                .put("files", files)
+                .toString(2) + "\n"
             File(starliveDir, "handoff.json").writeText(json)
             true
         } catch (e: Exception) {

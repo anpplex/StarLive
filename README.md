@@ -21,7 +21,7 @@
 ## 当前状态
 
 - ✅ 产品 / 交互 / 技术规格（见 `docs/`）
-- ✅ Android App **0.1.7-core**（空闲壁纸、导入、播歌让出、多图库、主题兑换、`:ring-wallpaper-core`）
+- ✅ Android App **0.1.8-polish**（空闲壁纸、导入、播歌让出、多图库、主题兑换、检查更新、`:ring-wallpaper-core`）
 - ✅ 主题包兑换（LicenseHub）与打包脚本
 - ✅ Lyra ContentProvider / Download 互通
 - ⬜ 实车矩阵按 [QA-MATRIX](./docs/QA-MATRIX.md) 勾选

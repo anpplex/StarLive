@@ -10,6 +10,17 @@
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
 - 实车矩阵逐项勾选归档
 
+## [0.1.11-car] — 2026-08-03
+
+### Fixed
+
+- 播歌让出：车机 NLS 常不回调时，`KeepAliveService` 用 `AudioManager.isMusicActive` 轮询兜底
+
+### Verified on device
+
+- 空闲关 → 让出原厂；空闲开 → 再上屏
+- 网易云播放中应用 → deferred + 播歌让出；暂停 ~8s → 自动夺回
+
 ## [0.1.10-car] — 2026-08-03
 
 ### Fixed

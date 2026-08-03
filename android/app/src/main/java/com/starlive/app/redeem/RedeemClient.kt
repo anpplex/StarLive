@@ -7,7 +7,10 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
 import java.security.MessageDigest
 
@@ -29,8 +32,8 @@ object RedeemClient {
             val url = URL("$root/api/v1/starlive/exchange")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
-                connectTimeout = 15_000
-                readTimeout = 30_000
+                connectTimeout = 12_000
+                readTimeout = 20_000
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("Accept", "application/json")
@@ -57,14 +60,37 @@ object RedeemClient {
             } finally {
                 conn.disconnect()
             }
+        }.recoverCatching { e ->
+            throw mapNetworkError(e, "兑换")
         }.onFailure { Log.w(TAG, "exchange failed", it) }
+    }
+
+    /** Map IO / DNS / timeout to stable Chinese copy for R6 offline. */
+    fun mapNetworkError(e: Throwable, action: String = "请求"): IllegalStateException {
+        if (e is IllegalStateException && !e.message.isNullOrBlank()) return e
+        val msg = e.message.orEmpty()
+        val offline = e is UnknownHostException ||
+            e is SocketTimeoutException ||
+            e is IOException ||
+            msg.contains("Unable to resolve host", ignoreCase = true) ||
+            msg.contains("Failed to connect", ignoreCase = true) ||
+            msg.contains("Network is unreachable", ignoreCase = true) ||
+            msg.contains("ECONNREFUSED", ignoreCase = true) ||
+            msg.contains("ETIMEDOUT", ignoreCase = true) ||
+            msg.contains("timeout", ignoreCase = true)
+        val text = if (offline) {
+            RedeemExchangeParser.userMessage(0, null, null)
+        } else {
+            e.message?.takeIf { it.isNotBlank() } ?: "${action}失败"
+        }
+        return IllegalStateException(text, e)
     }
 
     fun downloadTo(url: String, dest: File, expectedSha256: String = ""): Result<File> {
         return runCatching {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 20_000
-                readTimeout = 120_000
+                connectTimeout = 12_000
+                readTimeout = 60_000
                 instanceFollowRedirects = true
             }
             try {
@@ -86,6 +112,8 @@ object RedeemClient {
                 }
             }
             dest
+        }.recoverCatching { e ->
+            throw mapNetworkError(e, "下载")
         }.onFailure { Log.w(TAG, "download failed", it) }
     }
 

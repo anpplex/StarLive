@@ -72,7 +72,7 @@ class ClusterStripActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         val id = display?.displayId ?: Display.INVALID_DISPLAY
-        (application as? StarLiveApp)?.orchestrator?.display?.onActivityResumed(id)
+        (application as? StarLiveApp)?.orchestrator?.onClusterAlive(id)
         val filter = IntentFilter().apply {
             addAction(ACTION_FINISH)
             addAction(ACTION_RELOAD)

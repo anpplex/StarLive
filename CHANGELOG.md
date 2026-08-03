@@ -8,8 +8,29 @@
 
 - 在线主题商店（非兑换码路径）
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
-- 实车矩阵逐项勾选归档
-- 车机开机自启：依赖厂商白名单；探针对齐 BOOT 是否送达
+- QA 剩余 ⬜：I1/I3–I5 · M3 · R2–R4/R6 · L3–L4（需人工 / 第二设备）
+
+### Known limitations
+
+- **冷启开机自启无法持久化（无厂商 UI 白名单）**  
+  多次 `adb reboot` 仍无 `boot_probe.log` → BOOT 未投递。  
+  **0.1.13+ 补偿**：进程启动（打开 App / 杀进程后再开）走同一 recover 调度，约 2.5s 内自动上屏。  
+  见 `docs/QA-MATRIX.md` §B1。
+
+## [0.1.13-car] — 2026-08-03
+
+### Added
+
+- 进程启动恢复：`StarLiveApp` 在空闲开且有图时 `bootScheduler.schedule("process-start")`，弥补车机不投递 BOOT
+- 上屏状态同步：`StripOrchestrator` UI 刷新广播 + 首页延迟/实时刷新，避免卡在「未上屏」
+- 关于页 / 空闲副文案：冷启限制与「打开 App 一次即可恢复」说明
+
+### Verified on device (LD249H019625)
+
+- **B4** force-stop → 打开 App → ~4s 内 ClusterStrip + KeepAlive ✅  
+- **C5** 日夜 深/浅/自动 ✅ · **I6** 图库「夜色」切换 ✅ · **I7** 恢复示范 → minimal ✅  
+- 首页胶囊「已上屏」与 cluster 一致 ✅  
+- **L2** `content://com.starlive.app.handoff/meta|active` 可读 ✅  
 
 ## [0.1.12-car] — 2026-08-03
 
@@ -19,7 +40,7 @@
 
 ### Verified on device
 
-- **B1 开机自启 ❌**（`adb reboot` ×2）：进程未起、无 KeepAlive、无 `boot_probe.log` → 系统未把 BOOT 交给星澜（非 App 逻辑未调度）
+- **B1 开机自启 ⚠️ 已知限制**（reboot ≥4）：进程未起、无 KeepAlive、无 `boot_probe.log` → 系统未把 BOOT 交给星澜（非 App 逻辑未调度）；adb `deviceidle` 白名单无效
 
 ## [0.1.11-car] — 2026-08-03
 

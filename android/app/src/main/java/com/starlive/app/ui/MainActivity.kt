@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.HorizontalScrollView
@@ -34,24 +35,35 @@ import com.starlive.app.ui.UiTokens.dp
 import com.starlive.app.wallpaper.WallpaperLibrary
 import com.starlive.app.wallpaper.WallpaperRepository
 import com.starlive.ring.StripGeometry
-import java.io.File
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
- * Home cockpit (HMI-style): hero preview → pick wallpaper → one primary apply.
- * Low-frequency actions live under 「更多」.
+ * Home: swipe gallery in hero + one primary apply. 导入/更多 on top bar.
  */
 class MainActivity : AppCompatActivity() {
-    private lateinit var preview: ImageView
     private lateinit var statusTv: TextView
     private lateinit var sourceTv: TextView
     private lateinit var heroSub: TextView
-    private lateinit var libraryHost: LinearLayout
-    private lateinit var demoHost: LinearLayout
-    private var selectedDemoId: String? = null
+    private lateinit var pageIndicator: TextView
+    private lateinit var galleryScroll: HorizontalScrollView
+    private lateinit var galleryRow: LinearLayout
+    private var galleryPageW: Int = 0
+    private var galleryHeroH: Int = 0
+    private var galleryIndex: Int = 0
+    private var galleryItems: List<GalleryItem> = emptyList()
+    private var snapPosted = false
 
     private val orch get() = (application as StarLiveApp).orchestrator
 
     private var nightRowHost: LinearLayout? = null
+
+    private data class GalleryItem(
+        val key: String,
+        val label: String,
+        val demoId: String? = null,
+        val libId: String? = null,
+    )
 
     private val uiRefreshReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -61,7 +73,7 @@ class MainActivity : AppCompatActivity() {
                     val reason = intent.getStringExtra(StripOrchestrator.EXTRA_REASON).orEmpty()
                     if (reason.startsWith("ambient")) {
                         rebuildNightRow()
-                        rebuildDemoChips()
+                        rebuildGallery(keepPage = true)
                     }
                     refreshUi()
                 }
@@ -99,7 +111,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WallpaperRepository.ensureSeeded(this)
-        selectedDemoId = WallpaperRepository.activeId(this).takeIf { !it.startsWith("lib:") && it != "custom" }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -107,12 +118,10 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(24), dp(16), dp(24), dp(24))
         }
 
-        // 1) Header  2) Hero  3) 应用上屏（紧贴预览）  4) 选择壁纸库
+        // 标题栏（导入 | 更多）→ 顶部横滑预览 → 应用上屏
         root.addView(buildTopBar())
         root.addView(buildHeroCard())
         root.addView(buildPrimaryApply())
-        root.addView(buildPickHeader())
-        root.addView(buildLibraryCard())
 
         if (!WallpaperRepository.firstRunHintShown(this)) {
             Toast.makeText(this, R.string.first_run_hint, Toast.LENGTH_LONG).show()
@@ -132,6 +141,7 @@ class MainActivity : AppCompatActivity() {
                 )
             },
         )
+        rebuildGallery(keepPage = false)
         refreshUi()
     }
 
@@ -157,87 +167,111 @@ class MainActivity : AppCompatActivity() {
         top.addView(titles)
         statusTv = UiKit.statusPill(this)
         top.addView(statusTv)
+        // 导入在「更多」左侧
         top.addView(
-            UiKit.ghostButton(this, "更多") { showMoreMenu() }.also {
+            UiKit.secondaryButton(this, "导入") { showImportSheet() }.also {
+                it.minHeight = dp(40)
+                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 it.layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { marginStart = dp(10) }
             },
         )
+        top.addView(
+            UiKit.ghostButton(this, "更多") { showMoreMenu() }.also {
+                it.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = dp(8) }
+            },
+        )
         return top
     }
 
+    /** Full-width paging gallery: demos + library as swipeable strip previews. */
     private fun buildHeroCard(): LinearLayout {
         val card = UiKit.card(this)
         card.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { topMargin = dp(10) }
-        // Full wallpaper band only (no left gauge). Aspect = 2990×284.
+
         val contentW = resources.displayMetrics.widthPixels - dp(48)
-        val heroH = (contentW * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W)
-            .coerceIn(dp(64), dp(120))
-        preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
+        galleryPageW = contentW
+        galleryHeroH = (contentW * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W)
+            .coerceIn(dp(72), dp(128))
+
+        galleryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                heroH,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                galleryHeroH,
             )
-            applyRoundedBg(UiTokens.heroBg, 14f, UiTokens.stroke)
-            contentDescription = "星环预览，点按应用上屏"
-            setOnClickListener { applyWallpaper() }
-            // Match strip band corners via clip
+        }
+        galleryScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            isFillViewport = false
             clipToOutline = true
+            applyRoundedBg(UiTokens.heroBg, 14f, UiTokens.stroke)
             outlineProvider = object : android.view.ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: android.graphics.Outline) {
                     val r = 14f * resources.displayMetrics.density
                     outline.setRoundRect(0, 0, view.width, view.height, r)
                 }
             }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                galleryHeroH,
+            )
+            addView(galleryRow)
+            setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_UP ||
+                    event.actionMasked == MotionEvent.ACTION_CANCEL
+                ) {
+                    postSnapGallery()
+                }
+                false
+            }
+            setOnScrollChangeListener { _, _, _, _, _ ->
+                // live page hint while dragging
+                if (galleryPageW > 0 && galleryItems.isNotEmpty()) {
+                    val page = ((scrollX + galleryPageW / 2f) / galleryPageW)
+                        .toInt()
+                        .coerceIn(0, galleryItems.lastIndex)
+                    updatePageIndicator(page)
+                }
+            }
         }
-        card.addView(preview)
+        card.addView(galleryScroll)
+
+        pageIndicator = TextView(this).apply {
+            setTextColor(UiTokens.textMuted)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding(0, dp(10), 0, 0)
+            gravity = Gravity.CENTER
+        }
+        card.addView(pageIndicator)
+
+        sourceTv = TextView(this).apply {
+            setTextColor(UiTokens.textPrimary)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setPadding(0, dp(6), 0, 0)
+            gravity = Gravity.CENTER
+        }
+        card.addView(sourceTv)
 
         heroSub = TextView(this).apply {
             setTextColor(UiTokens.textSecondary)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            setPadding(0, dp(12), 0, dp(2))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(0, dp(4), 0, 0)
             setLineSpacing(0f, 1.2f)
+            gravity = Gravity.CENTER
         }
         card.addView(heroSub)
-
-        sourceTv = TextView(this).apply {
-            setTextColor(UiTokens.textMuted)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setPadding(0, dp(2), 0, 0)
-        }
-        card.addView(sourceTv)
         return card
-    }
-
-    /** Section title row: 选择壁纸 + 导入 */
-    private fun buildPickHeader(): LinearLayout {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(18), 0, dp(8))
-        }
-        row.addView(
-            TextView(this).apply {
-                text = "选择壁纸"
-                setTextColor(UiTokens.textPrimary)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        row.addView(
-            UiKit.secondaryButton(this, "导入") { showImportSheet() }.also {
-                it.minHeight = dp(40)
-                it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            },
-        )
-        return row
     }
 
     private fun buildPrimaryApply(): Button =
@@ -245,170 +279,168 @@ class MainActivity : AppCompatActivity() {
             it.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(12) }
+            ).apply { topMargin = dp(14) }
             it.minHeight = dp(52)
             it.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         }
 
-    private fun buildLibraryCard(): LinearLayout {
-        val card = UiKit.card(this)
-        card.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        )
-        card.addView(
-            TextView(this).apply {
-                text = "示范"
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            },
-        )
-        demoHost = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(10), 0, dp(4))
+    private fun buildGalleryList(): List<GalleryItem> {
+        val out = mutableListOf<GalleryItem>()
+        WallpaperRepository.demos(this).forEach { d ->
+            out += GalleryItem(key = d.id, label = d.label, demoId = d.id)
         }
-        card.addView(
-            HorizontalScrollView(this).apply {
-                isHorizontalScrollBarEnabled = false
-                overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-                isFillViewport = false
-                addView(demoHost)
-            },
-        )
-        rebuildDemoChips()
-
-        card.addView(
-            TextView(this).apply {
-                text = "我的库 · 左右滑动 · 长按删除"
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                setPadding(0, dp(16), 0, 0)
-            },
-        )
-        libraryHost = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(10), 0, 0)
+        WallpaperRepository.libraryItems(this).forEachIndexed { index, item ->
+            out += GalleryItem(
+                key = "lib:${item.id}",
+                label = prettyLibLabel(item, index),
+                libId = item.id,
+            )
         }
-        card.addView(libraryHost)
-        rebuildLibraryRail()
-
-        val sourceRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, 0)
-        }
-        sourceRow.addView(
-            TextView(this).apply {
-                text = "恢复内置示范"
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        sourceRow.addView(UiKit.ghostButton(this, "恢复示范") { confirmRestoreDemo() })
-        card.addView(sourceRow)
-        return card
+        return out
     }
 
-    /**
-     * Strip thumbnail card: wide preview + short label.
-     * Aspect close to wallpaper band so crop looks correct when sliding.
-     */
-    private fun thumbChip(
-        label: String,
-        selected: Boolean,
-        thumb: Bitmap?,
-        onClick: () -> Unit,
-        onLongClick: (() -> Boolean)? = null,
-    ): LinearLayout {
-        // ~2.8:1 visual strip, large enough for car touch + glance
-        val w = dp(176)
-        val h = dp(64)
-        val col = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = dp(12) }
-            applyRoundedBg(
-                if (selected) UiTokens.surface3 else UiTokens.surface2,
-                12f,
-                if (selected) UiTokens.accent else UiTokens.stroke,
-            )
-            setPadding(dp(5), dp(5), dp(5), dp(6))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { onClick() }
-            if (onLongClick != null) {
-                setOnLongClickListener { onLongClick() }
-            }
-        }
-        col.addView(
-            ImageView(this).apply {
+    private fun rebuildGallery(keepPage: Boolean) {
+        if (!::galleryRow.isInitialized) return
+        val prevKey = galleryItems.getOrNull(galleryIndex)?.key
+        galleryItems = buildGalleryList()
+        galleryRow.removeAllViews()
+        val w = galleryPageW.coerceAtLeast(resources.displayMetrics.widthPixels - dp(48))
+        val h = galleryHeroH.coerceAtLeast(dp(72))
+        galleryPageW = w
+        galleryItems.forEach { item ->
+            val iv = ImageView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(w, h)
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                applyRoundedBg(UiTokens.heroBg, 8f)
-                if (thumb != null) setImageBitmap(thumb)
-                clipToOutline = true
-                outlineProvider = object : android.view.ViewOutlineProvider() {
-                    override fun getOutline(view: View, outline: android.graphics.Outline) {
-                        val r = 8f * resources.displayMetrics.density
-                        outline.setRoundRect(0, 0, view.width, view.height, r)
+                setImageBitmap(loadGalleryBitmap(item))
+                contentDescription = item.label
+                setOnClickListener { applyWallpaper() }
+                setOnLongClickListener {
+                    if (item.libId != null) {
+                        confirmDeleteLibrary(item)
+                        true
+                    } else {
+                        false
                     }
                 }
-            },
-        )
-        col.addView(
-            TextView(this).apply {
-                text = label
-                gravity = Gravity.CENTER
-                setTextColor(if (selected) UiTokens.textPrimary else UiTokens.textSecondary)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                typeface = if (selected) {
-                    Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                } else {
-                    Typeface.DEFAULT
-                }
-                setPadding(0, dp(5), 0, 0)
-                maxLines = 1
-            },
-        )
-        return col
+            }
+            galleryRow.addView(iv)
+        }
+        var idx = when {
+            keepPage && prevKey != null ->
+                galleryItems.indexOfFirst { it.key == prevKey }.takeIf { it >= 0 }
+            else -> null
+        }
+        if (idx == null) {
+            val active = WallpaperRepository.activeId(this)
+            idx = galleryItems.indexOfFirst {
+                it.key == active || it.demoId == active || it.key == "lib:$active"
+            }.takeIf { it >= 0 } ?: 0
+        }
+        galleryIndex = idx.coerceIn(0, (galleryItems.size - 1).coerceAtLeast(0))
+        galleryScroll.post {
+            if (galleryItems.isEmpty()) return@post
+            galleryScroll.scrollTo(galleryIndex * galleryPageW, 0)
+            applyGallerySelection(galleryIndex, toast = false)
+        }
     }
 
-    private fun loadDemoThumb(demo: WallpaperRepository.Demo): Bitmap? {
+    private fun loadGalleryBitmap(item: GalleryItem): Bitmap? {
+        val night = WallpaperRepository.isNightish(this)
         return runCatching {
-            val asset = demo.assetFor(WallpaperRepository.isNightish(this))
-            assets.open(asset).use { input ->
-                val raw = BitmapFactory.decodeStream(input) ?: return@runCatching null
-                // Keep strip proportions for thumb decode
-                val tw = 352
-                val th = (tw * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W).coerceAtLeast(32)
-                Bitmap.createScaledBitmap(raw, tw, th, true).also {
-                    if (it !== raw) raw.recycle()
+            when {
+                item.demoId != null -> {
+                    val demo = WallpaperRepository.demos(this).firstOrNull { it.id == item.demoId }
+                        ?: return@runCatching null
+                    assets.open(demo.assetFor(night)).use { input ->
+                        val raw = BitmapFactory.decodeStream(input) ?: return@runCatching null
+                        scaleToBand(raw)
+                    }
                 }
+                item.libId != null -> {
+                    val lib = WallpaperRepository.libraryItems(this).firstOrNull { it.id == item.libId }
+                        ?: return@runCatching null
+                    val f = lib.file(this)
+                    if (!f.isFile) return@runCatching null
+                    val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
+                    val raw = BitmapFactory.decodeFile(f.absolutePath, opts) ?: return@runCatching null
+                    scaleToBand(raw)
+                }
+                else -> null
             }
         }.getOrNull()
     }
 
-    private fun loadLibraryThumb(item: WallpaperLibrary.Item): Bitmap? {
-        return runCatching {
-            val f = item.file(this)
-            if (!f.isFile) return@runCatching null
-            val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
-            val raw = BitmapFactory.decodeFile(f.absolutePath, opts) ?: return@runCatching null
-            val tw = 352
-            val th = (tw * StripGeometry.WALLPAPER_H / StripGeometry.WALLPAPER_W).coerceAtLeast(32)
-            Bitmap.createScaledBitmap(raw, tw, th, true).also {
-                if (it !== raw) raw.recycle()
-            }
-        }.getOrNull()
+    private fun scaleToBand(raw: Bitmap): Bitmap {
+        val tw = StripGeometry.WALLPAPER_W
+        val th = StripGeometry.WALLPAPER_H
+        if (raw.width == tw && raw.height == th) return raw
+        return Bitmap.createScaledBitmap(raw, tw, th, true).also {
+            if (it !== raw) raw.recycle()
+        }
     }
 
-    /** Human-readable library chip: never show starlive_w / raw filenames. */
+    private fun postSnapGallery() {
+        if (snapPosted) return
+        snapPosted = true
+        galleryScroll.post {
+            snapPosted = false
+            snapGallery()
+        }
+    }
+
+    private fun snapGallery() {
+        if (galleryPageW <= 0 || galleryItems.isEmpty()) return
+        val page = ((galleryScroll.scrollX + galleryPageW / 2f) / galleryPageW)
+            .roundToInt()
+            .coerceIn(0, galleryItems.lastIndex)
+        galleryScroll.smoothScrollTo(page * galleryPageW, 0)
+        if (page != galleryIndex) {
+            applyGallerySelection(page, toast = true)
+        } else {
+            updatePageIndicator(page)
+        }
+    }
+
+    private fun applyGallerySelection(page: Int, toast: Boolean) {
+        if (galleryItems.isEmpty()) return
+        galleryIndex = page.coerceIn(0, galleryItems.lastIndex)
+        val item = galleryItems[galleryIndex]
+        when {
+            item.demoId != null -> WallpaperRepository.applyDemo(this, item.demoId)
+            item.libId != null -> WallpaperRepository.applyLibraryItem(this, item.libId)
+        }
+        updatePageIndicator(galleryIndex)
+        refreshUi()
+        if (toast) {
+            Toast.makeText(this, item.label, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updatePageIndicator(page: Int) {
+        if (!::pageIndicator.isInitialized || galleryItems.isEmpty()) return
+        val p = page.coerceIn(0, galleryItems.lastIndex)
+        val item = galleryItems[p]
+        pageIndicator.text = "左右滑动切换 · ${p + 1} / ${galleryItems.size}"
+        if (::sourceTv.isInitialized) {
+            sourceTv.text = item.label
+        }
+    }
+
+    private fun confirmDeleteLibrary(item: GalleryItem) {
+        val libId = item.libId ?: return
+        AlertDialog.Builder(this)
+            .setTitle("删除导入？")
+            .setMessage(item.label)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton("删除") { _, _ ->
+                WallpaperRepository.deleteLibraryItem(this, libId)
+                rebuildGallery(keepPage = false)
+                refreshUi()
+            }
+            .show()
+    }
+
+    /** Human-readable library label. */
     private fun prettyLibLabel(item: WallpaperLibrary.Item, index: Int): String {
         val l = item.label.trim()
         return when {
@@ -417,7 +449,7 @@ class MainActivity : AppCompatActivity() {
             l.startsWith("starlive", ignoreCase = true) -> "导入 ${index + 1}"
             l.endsWith(".jpg", true) || l.endsWith(".png", true) || l.endsWith(".jpeg", true) ->
                 "导入 ${index + 1}"
-            else -> l.take(8)
+            else -> l.take(10)
         }
     }
 
@@ -426,6 +458,7 @@ class MainActivity : AppCompatActivity() {
             "兑换主题",
             "私人定制",
             "显示与恢复…",
+            "恢复示范",
             "规格说明",
             "升级到 Lyra",
             "关于",
@@ -437,9 +470,10 @@ class MainActivity : AppCompatActivity() {
                     0 -> startActivity(Intent(this, RedeemActivity::class.java))
                     1 -> startActivity(Intent(this, CustomActivity::class.java))
                     2 -> showSettingsDialog()
-                    3 -> startActivity(Intent(this, SpecActivity::class.java))
-                    4 -> startActivity(Intent(this, UpgradeActivity::class.java))
-                    5 -> startActivity(Intent(this, AboutActivity::class.java))
+                    3 -> confirmRestoreDemo()
+                    4 -> startActivity(Intent(this, SpecActivity::class.java))
+                    5 -> startActivity(Intent(this, UpgradeActivity::class.java))
+                    6 -> startActivity(Intent(this, AboutActivity::class.java))
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -622,95 +656,18 @@ class MainActivity : AppCompatActivity() {
         if (WallpaperRepository.idlePrefer(this) && !orch.isHandedOffToLyra()) {
             runCatching { KeepAliveService.start(this) }
         }
-        rebuildLibraryRail()
-        rebuildDemoChips()
+        rebuildGallery(keepPage = true)
         refreshUi()
         maybeSoftHints()
-        statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 900L)
-        statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
+        if (::statusTv.isInitialized) {
+            statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 900L)
+            statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
+        }
     }
 
     override fun onPause() {
         runCatching { unregisterReceiver(uiRefreshReceiver) }
         super.onPause()
-    }
-
-    private fun rebuildDemoChips() {
-        if (!::demoHost.isInitialized) return
-        demoHost.removeAllViews()
-        val active = WallpaperRepository.activeId(this)
-        WallpaperRepository.demos(this).forEach { d ->
-            // Mutual exclusive with library selection
-            val selected = (active == d.id || selectedDemoId == d.id) &&
-                !active.startsWith("lib:") && active != "custom"
-            val thumb = loadDemoThumb(d)
-            demoHost.addView(
-                thumbChip(d.label, selected, thumb, onClick = {
-                    selectedDemoId = d.id
-                    WallpaperRepository.applyDemo(this, d.id)
-                    rebuildDemoChips()
-                    rebuildLibraryRail()
-                    refreshUi()
-                    Toast.makeText(this, "已选 ${d.label} · 点「应用上屏」", Toast.LENGTH_SHORT).show()
-                }),
-            )
-        }
-    }
-
-    private fun rebuildLibraryRail() {
-        if (!::libraryHost.isInitialized) return
-        libraryHost.removeAllViews()
-        val items = WallpaperRepository.libraryItems(this)
-        if (items.isEmpty()) {
-            libraryHost.addView(
-                TextView(this).apply {
-                    text = "暂无导入 · 点右上「导入」添加"
-                    setTextColor(UiTokens.textMuted)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    setPadding(0, dp(6), 0, dp(6))
-                },
-            )
-            return
-        }
-        val scroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val active = WallpaperRepository.activeId(this)
-        items.forEachIndexed { index, item ->
-            val selected = active == "lib:${item.id}" || active == item.id
-            val label = prettyLibLabel(item, index)
-            val thumb = loadLibraryThumb(item)
-            row.addView(
-                thumbChip(
-                    label = label,
-                    selected = selected,
-                    thumb = thumb,
-                    onClick = {
-                        if (WallpaperRepository.applyLibraryItem(this, item.id)) {
-                            selectedDemoId = null
-                            rebuildDemoChips()
-                            rebuildLibraryRail()
-                            refreshUi()
-                            Toast.makeText(this, "已选 $label · 点「应用上屏」", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onLongClick = {
-                        AlertDialog.Builder(this)
-                            .setTitle("删除导入？")
-                            .setMessage(label)
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .setPositiveButton("删除") { _, _ ->
-                                WallpaperRepository.deleteLibraryItem(this, item.id)
-                                rebuildLibraryRail()
-                                refreshUi()
-                            }
-                            .show()
-                        true
-                    },
-                ),
-            )
-        }
-        scroll.addView(row)
-        libraryHost.addView(scroll)
     }
 
     private fun maybeSoftHints() {
@@ -810,9 +767,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.restore_demo) { _, _ ->
                 WallpaperRepository.restoreDemo(this)
-                selectedDemoId = WallpaperRepository.activeId(this)
-                rebuildDemoChips()
-                rebuildLibraryRail()
+                rebuildGallery(keepPage = false)
                 refreshUi()
                 Toast.makeText(this, R.string.restore_done, Toast.LENGTH_SHORT).show()
             }
@@ -821,12 +776,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshUi() {
         if (!::sourceTv.isInitialized) return
-        sourceTv.text = "当前 · ${WallpaperRepository.labelForActive(this)}"
-        // Same bake as ClusterStrip (left edge dissolve + glass) so preview ≈ remote.
-        if (::preview.isInitialized) {
-            val night = WallpaperRepository.isNightish(this)
-            val bmp = WallpaperRepository.decodeActiveForStrip(this, night)
-            if (bmp != null) preview.setImageBitmap(bmp)
+        // Keep gallery label; fall back to repo label if empty
+        if (galleryItems.isNotEmpty() && galleryIndex in galleryItems.indices) {
+            sourceTv.text = galleryItems[galleryIndex].label
+            updatePageIndicator(galleryIndex)
+        } else {
+            sourceTv.text = WallpaperRepository.labelForActive(this)
         }
         val idle = WallpaperRepository.idlePrefer(this)
         orch.syncShowingFromDisplay()

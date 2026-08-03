@@ -11,8 +11,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.1.6-redeem"
+        versionCode = 9
+        versionName = "0.1.7-core"
         // Override at build: -PREDEEM_API_BASE=https://host
         buildConfigField(
             "String",
@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":ring-wallpaper-core"))
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
 }

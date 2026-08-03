@@ -38,7 +38,7 @@
 |----|-----|------|
 | 仓库 | 独立 `anpplex/StarLive` | 可仍独立；core 抽共享 |
 | applicationId | `com.starlive.app`（**并排可装**，利升级过渡） | 不变 |
-| 代码 | 从 Lyra **拷贝精简**壁纸层 | `ring-wallpaper-core` 两边依赖 |
+| 代码 | 从 Lyra **拷贝精简**壁纸层 | ✅ StarLive 已建 `:ring-wallpaper-core`；Lyra 可渐进依赖 |
 | 数据 | Download 文件名互通 + `starlive-handoff/v1` | ContentProvider 自动迁移 |
 | 升级 UX | Footer/About CTA | Lyra 内「从星澜导入」 |
 

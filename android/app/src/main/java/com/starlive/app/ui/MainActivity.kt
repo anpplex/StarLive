@@ -20,7 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
-import com.starlive.app.display.StripGeometry
+import com.starlive.ring.StripGeometry
 import com.starlive.app.wallpaper.WallpaperRepository
 
 /**

@@ -1,8 +1,10 @@
-package com.starlive.app.display
+package com.starlive.ring
 
 /**
- * Avatr star-ring geometry — must stay aligned with Lyra [EffectSurfaceProfile]
- * wallpaper band for handoff (see docs/LYRA-UPGRADE.md).
+ * Avatr star-ring geometry — shared contract for StarLive and (future) Lyra handoff.
+ *
+ * Align with Lyra [EffectSurfaceProfile] wallpaper band:
+ * full strip 4032×284, gauge reserve 1042, content band 2990×284.
  */
 object StripGeometry {
     const val STRIP_W = 4032

@@ -7,11 +7,19 @@
 ### Planned
 
 - 在线主题商店（非兑换码路径）
+- Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
+
+## [0.1.7-core] — 2026-08-03
+
+### Added
+
+- Android 库模块 `:ring-wallpaper-core`（`com.starlive.ring`）：
+  `StripGeometry` · `WallpaperCropper` · `WallpaperEdgeSoftener`
+- 文档 `docs/RING-WALLPAPER-CORE.md`
 
 ### Changed
 
-- 升级到 Lyra 文案：说明 ContentProvider 直读路径
-- Lyra 对接文档：`docs/patches/lyra-import-starlive-handoff.md`（CP 优先）
+- App 依赖 core 模块，删除 app 内重复几何/裁切实现
 
 ## [0.1.6-redeem] — 2026-08-03
 

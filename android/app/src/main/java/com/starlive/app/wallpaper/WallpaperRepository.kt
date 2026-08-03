@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import com.starlive.app.display.StripGeometry
-import com.starlive.app.display.WallpaperEdgeSoftener
+import com.starlive.ring.StripGeometry
+import com.starlive.ring.WallpaperEdgeSoftener
 import com.starlive.app.runtime.PendingApplyStore
 import org.json.JSONObject
 import java.io.File

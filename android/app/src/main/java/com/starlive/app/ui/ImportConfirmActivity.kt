@@ -13,9 +13,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.StarLiveApp
-import com.starlive.app.display.StripGeometry
+import com.starlive.ring.StripGeometry
 import com.starlive.app.runtime.PendingApplyStore
-import com.starlive.app.wallpaper.WallpaperCropper
+import com.starlive.ring.WallpaperCropper
 import com.starlive.app.wallpaper.WallpaperRepository
 import java.io.File
 

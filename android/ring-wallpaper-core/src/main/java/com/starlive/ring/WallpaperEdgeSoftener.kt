@@ -1,4 +1,4 @@
-package com.starlive.app.display
+package com.starlive.ring
 
 import android.graphics.Bitmap
 import android.graphics.Color

@@ -7,3 +7,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "StarLive"
 include(":app")
+include(":ring-wallpaper-core")

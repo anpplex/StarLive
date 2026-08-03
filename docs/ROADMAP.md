@@ -36,6 +36,6 @@
 | LicenseHub 登记主题包（磁盘 zip → 库表 SHA） | ✅ Admin「登记主题包」 |
 | 兑换后一键应用上屏 | ✅ 0.1.6-redeem |
 | GIF / 视频壁纸 | ❌ 暂缓（产品演进备忘） |
-| ring-wallpaper-core 共享 | ⬜ |
+| ring-wallpaper-core 共享 | ✅ 0.1.7-core 模块 `com.starlive.ring`（Lyra 可渐进接入） |
 
 分支命名对齐：`feature/p0-phase1-strip-display` 等。见 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)。

@@ -2,7 +2,7 @@ package com.starlive.app.redeem
 
 import android.content.Context
 import android.util.Log
-import com.starlive.app.wallpaper.WallpaperCropper
+import com.starlive.ring.WallpaperCropper
 import com.starlive.app.wallpaper.WallpaperRepository
 import org.json.JSONObject
 import java.io.File

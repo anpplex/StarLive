@@ -15,7 +15,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.StarLiveApp
-import com.starlive.app.display.StripGeometry
+import com.starlive.ring.StripGeometry
 import com.starlive.app.wallpaper.WallpaperRepository
 
 /**

@@ -1,22 +1,21 @@
-package com.starlive.app.wallpaper
+package com.starlive.ring
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import com.starlive.app.display.StripGeometry
 import java.io.File
 import java.io.InputStream
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Crop rules (INTERACTION-1.0):
+ * Crop rules (INTERACTION-1.0 / shared with StarLive + future Lyra):
  * - ≈2990×284 ±2 → exact (may only scale if needed)
  * - width ≥ 4032 and strip-like height → band crop from x=1042
  * - else center cover to 2990×284
  */
 object WallpaperCropper {
-    private const val TAG = "StarLive"
+    private const val TAG = "RingWallpaper"
     private const val EXACT_TOL = 2
 
     enum class Strategy { EXACT, BAND, CENTER }
@@ -63,7 +62,6 @@ object WallpaperCropper {
         val tw = StripGeometry.WALLPAPER_W
         val th = StripGeometry.WALLPAPER_H
 
-        // Exact match (after sample)
         if (kotlin.math.abs(sw - tw) <= EXACT_TOL && kotlin.math.abs(sh - th) <= EXACT_TOL) {
             val scaled = if (sw == tw && sh == th) {
                 src
@@ -75,7 +73,6 @@ object WallpaperCropper {
             return Result(scaled, Strategy.EXACT, sw, sh, "尺寸匹配 · 将裁为 2990×284")
         }
 
-        // Full strip band: prefer x=1042 take 2990
         val stripLike = sh in 200..400 || ratioClose(sw, sh, StripGeometry.STRIP_W, StripGeometry.STRIP_H)
         if (sw >= StripGeometry.STRIP_W && stripLike) {
             val x = StripGeometry.GAUGE_RESERVE
@@ -96,7 +93,6 @@ object WallpaperCropper {
             }
         }
 
-        // Center cover
         val scale = max(tw.toFloat() / sw, th.toFloat() / sh)
         val scaledW = max(tw, (sw * scale).toInt())
         val scaledH = max(th, (sh * scale).toInt())

@@ -44,13 +44,14 @@ jobs:
       - name: Grant gradlew
         run: chmod +x android/gradlew android/gradlew.bat
 
-      - name: Unit tests (crop strategy)
+      - name: Unit tests
         working-directory: android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
           ./gradlew --no-daemon --stacktrace \
-            :ring-wallpaper-core:testDebugUnitTest
+            :ring-wallpaper-core:testDebugUnitTest \
+            :app:testDebugUnitTest
 
       - name: Assemble core + app (debug)
         working-directory: android

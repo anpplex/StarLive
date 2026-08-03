@@ -7,8 +7,7 @@
 ### Planned
 
 - 在线主题商店（非兑换码路径）
-- Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
-- QA 剩余 ⬜：I1 相册 · M3 切歌 · R2–R4/R6 · L3–L4（人工 / 第二设备）
+- QA 剩余 ⬜：I1 相册 · M3 实车切歌 · L3–L4 UI（需车机 / 人工）
 
 ### Known limitations
 
@@ -16,6 +15,20 @@
   多次 `adb reboot` 仍无 `boot_probe.log` → BOOT 未投递。  
   **0.1.13+ 补偿**：进程启动自动 recover；**0.1.14** process-start 首跳约 0.4s。  
   见 `docs/QA-MATRIX.md` §B1。
+
+## [0.1.15-quality] — 2026-08-03
+
+### Added
+
+- `RedeemExchangeParser` + 单测（R2 幂等 JSON、R4/R3/R6 文案映射）
+- `PlaybackGate` 可注入时钟/调度 + M3 切歌空隙单测（&lt;3s 不让出、暂停 8s 让出）
+- Release 签名：`keystore.properties.example` · `scripts/build-release.sh` · `scripts/publish-github-release.sh`
+- `scripts/test-redeem-api.sh` 兑换 API 冒烟（无需车机）
+- CI：`:app:testDebugUnitTest`
+
+### Notes
+
+- Lyra 仓：依赖本地 `StarLive/android/ring-wallpaper-core` + 几何契约单测（另提 PR）
 
 ## [0.1.14-car] — 2026-08-03
 

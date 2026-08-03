@@ -47,6 +47,8 @@
 | 进程启动自动恢复（补冷启无 BOOT） | ✅ 0.1.13-car · 0.1.14 首跳 0.4s |
 | 上屏胶囊状态与 cluster 同步 | ✅ 0.1.13-car |
 | CropStrategy 单测 + CI unitTest | ✅ 0.1.14-car |
+| Redeem / PlaybackGate 单测 · Release 签名脚本 | ✅ 0.1.15-quality |
+| Lyra 依赖 ring-wallpaper-core（本地相对路径） | ✅ Lyra 仓 |
 
 ## 发版
 

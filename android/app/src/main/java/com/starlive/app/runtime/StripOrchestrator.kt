@@ -23,15 +23,17 @@ class StripOrchestrator(private val app: Application) {
         }
     }
 
-    private val playbackGate = PlaybackGate { playing ->
-        if (playing) {
-            onYieldPlaying()
-        } else {
-            onResumeAfterPlay()
-        }
-        KeepAliveService.refresh(app)
-        (app as? com.starlive.app.StarLiveApp)?.wallpaperCarousel?.reschedule()
-    }
+    private val playbackGate = PlaybackGate(
+        onEffectivelyPlayingChanged = { playing ->
+            if (playing) {
+                onYieldPlaying()
+            } else {
+                onResumeAfterPlay()
+            }
+            KeepAliveService.refresh(app)
+            (app as? com.starlive.app.StarLiveApp)?.wallpaperCarousel?.reschedule()
+        },
+    )
 
     @Volatile
     var lastError: String? = null

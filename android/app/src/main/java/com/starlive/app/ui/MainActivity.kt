@@ -50,9 +50,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var galleryRow: LinearLayout
     private var galleryPageW: Int = 0
     private var galleryHeroH: Int = 0
+    /** Index into [galleryLoop] (tripled list for infinite swipe). */
     private var galleryIndex: Int = 0
-    private var galleryItems: List<GalleryItem> = emptyList()
+    /** Unique wallpapers (demos + library). */
+    private var galleryBase: List<GalleryItem> = emptyList()
+    /** [galleryBase] × 3 for seamless left/right loop. */
+    private var galleryLoop: List<GalleryItem> = emptyList()
     private var snapPosted = false
+    private var touchStartX = 0f
 
     private val orch get() = (application as StarLiveApp).orchestrator
 
@@ -209,9 +214,32 @@ class MainActivity : AppCompatActivity() {
                 galleryHeroH,
             )
         }
-        galleryScroll = HorizontalScrollView(this).apply {
+        galleryScroll = object : HorizontalScrollView(this) {
+            override fun fling(velocityX: Int) {
+                // Page-sized fling so left/right both land on a neighbor (not free-scroll chaos).
+                if (galleryPageW <= 0 || galleryLoop.isEmpty()) {
+                    super.fling(velocityX)
+                    return
+                }
+                val dir = when {
+                    velocityX > 200 -> -1 // fling right → previous page
+                    velocityX < -200 -> 1 // fling left → next page
+                    else -> 0
+                }
+                if (dir == 0) {
+                    super.fling(velocityX)
+                    postSnapGallery()
+                    return
+                }
+                val cur = ((scrollX + galleryPageW / 2f) / galleryPageW).roundToInt()
+                    .coerceIn(0, galleryLoop.lastIndex)
+                val target = (cur + dir).coerceIn(0, galleryLoop.lastIndex)
+                smoothScrollTo(target * galleryPageW, 0)
+                postDelayed({ snapGallery() }, 280)
+            }
+        }.apply {
             isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            overScrollMode = View.OVER_SCROLL_ALWAYS
             isFillViewport = false
             clipToOutline = true
             applyRoundedBg(UiTokens.heroBg, 14f, UiTokens.stroke)
@@ -226,20 +254,30 @@ class MainActivity : AppCompatActivity() {
                 galleryHeroH,
             )
             addView(galleryRow)
-            setOnTouchListener { _, event ->
-                if (event.actionMasked == MotionEvent.ACTION_UP ||
-                    event.actionMasked == MotionEvent.ACTION_CANCEL
-                ) {
-                    postSnapGallery()
+            setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        touchStartX = event.x
+                        // Keep parent vertical ScrollView from stealing horizontal swipes.
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (abs(event.x - touchStartX) > dp(8)) {
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        postSnapGallery()
+                    }
                 }
                 false
             }
-            setOnScrollChangeListener { _, _, _, _, _ ->
-                // live page hint while dragging
-                if (galleryPageW > 0 && galleryItems.isNotEmpty()) {
+            setOnScrollChangeListener { _, scrollX, _, _, _ ->
+                if (galleryPageW > 0 && galleryLoop.isNotEmpty()) {
                     val page = ((scrollX + galleryPageW / 2f) / galleryPageW)
                         .toInt()
-                        .coerceIn(0, galleryItems.lastIndex)
+                        .coerceIn(0, galleryLoop.lastIndex)
                     updatePageIndicator(page)
                 }
             }
@@ -301,9 +339,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun rebuildGallery(keepPage: Boolean) {
         if (!::galleryRow.isInitialized) return
-        val prevKey = galleryItems.getOrNull(galleryIndex)?.key
-        galleryItems = buildGalleryList()
-        // Wait until scroll view is measured so page width == viewport (snap works).
+        val prevKey = galleryLoop.getOrNull(galleryIndex)?.key
+            ?: galleryBase.getOrNull(realIndexOf(galleryIndex))?.key
+        galleryBase = buildGalleryList()
+        // Triple list → middle copy is home; jump back when nearing either edge.
+        galleryLoop = if (galleryBase.isEmpty()) {
+            emptyList()
+        } else {
+            galleryBase + galleryBase + galleryBase
+        }
         galleryScroll.post {
             val w = galleryScroll.width.takeIf { it > 0 }
                 ?: (resources.displayMetrics.widthPixels - dp(48))
@@ -312,7 +356,7 @@ class MainActivity : AppCompatActivity() {
             galleryPageW = w
             galleryHeroH = h
             galleryRow.removeAllViews()
-            galleryItems.forEach { item ->
+            galleryLoop.forEach { item ->
                 val iv = ImageView(this).apply {
                     layoutParams = LinearLayout.LayoutParams(w, h)
                     scaleType = ImageView.ScaleType.CENTER_CROP
@@ -330,22 +374,35 @@ class MainActivity : AppCompatActivity() {
                 }
                 galleryRow.addView(iv)
             }
-            var idx = when {
+            if (galleryBase.isEmpty()) {
+                galleryIndex = 0
+                pageIndicator.text = "暂无壁纸 · 点右上角导入"
+                sourceTv.text = "—"
+                return@post
+            }
+            val n = galleryBase.size
+            // Prefer middle block so user can swipe both ways immediately.
+            var real = when {
                 keepPage && prevKey != null ->
-                    galleryItems.indexOfFirst { it.key == prevKey }.takeIf { it >= 0 }
+                    galleryBase.indexOfFirst { it.key == prevKey }.takeIf { it >= 0 }
                 else -> null
             }
-            if (idx == null) {
+            if (real == null) {
                 val active = WallpaperRepository.activeId(this)
-                idx = galleryItems.indexOfFirst {
+                real = galleryBase.indexOfFirst {
                     it.key == active || it.demoId == active || it.key == "lib:$active"
                 }.takeIf { it >= 0 } ?: 0
             }
-            galleryIndex = idx.coerceIn(0, (galleryItems.size - 1).coerceAtLeast(0))
-            if (galleryItems.isEmpty()) return@post
+            galleryIndex = n + real.coerceIn(0, n - 1)
             galleryScroll.scrollTo(galleryIndex * galleryPageW, 0)
-            applyGallerySelection(galleryIndex, toast = false)
+            applyGallerySelection(galleryIndex, toast = false, recenter = false)
         }
+    }
+
+    private fun realIndexOf(loopIndex: Int): Int {
+        val n = galleryBase.size
+        if (n <= 0) return 0
+        return ((loopIndex % n) + n) % n
     }
 
     private fun loadGalleryBitmap(item: GalleryItem): Bitmap? {
@@ -393,25 +450,52 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun snapGallery() {
-        if (galleryPageW <= 0 || galleryItems.isEmpty()) return
+        if (galleryPageW <= 0 || galleryLoop.isEmpty() || galleryBase.isEmpty()) return
         val page = ((galleryScroll.scrollX + galleryPageW / 2f) / galleryPageW)
             .roundToInt()
-            .coerceIn(0, galleryItems.lastIndex)
+            .coerceIn(0, galleryLoop.lastIndex)
         galleryScroll.smoothScrollTo(page * galleryPageW, 0)
         if (page != galleryIndex) {
-            applyGallerySelection(page, toast = true)
+            applyGallerySelection(page, toast = true, recenter = true)
         } else {
+            // Still recenter if sitting on edge copies.
+            recenterLoopIfNeeded(page)
             updatePageIndicator(page)
         }
     }
 
-    private fun applyGallerySelection(page: Int, toast: Boolean) {
-        if (galleryItems.isEmpty()) return
-        galleryIndex = page.coerceIn(0, galleryItems.lastIndex)
-        val item = galleryItems[galleryIndex]
+    /**
+     * Keep scroll position in the middle third of the tripled list so both
+     * directions stay open (infinite loop without a dead end).
+     */
+    private fun recenterLoopIfNeeded(loopIndex: Int) {
+        val n = galleryBase.size
+        if (n <= 1 || galleryPageW <= 0) return
+        val real = realIndexOf(loopIndex)
+        val mid = n + real
+        // Near first or third copy → jump to middle copy (no animation).
+        if (loopIndex < n || loopIndex >= n * 2) {
+            galleryIndex = mid
+            galleryScroll.post {
+                galleryScroll.scrollTo(mid * galleryPageW, 0)
+            }
+        } else {
+            galleryIndex = loopIndex
+        }
+    }
+
+    private fun applyGallerySelection(page: Int, toast: Boolean, recenter: Boolean) {
+        if (galleryLoop.isEmpty() || galleryBase.isEmpty()) return
+        val loopIdx = page.coerceIn(0, galleryLoop.lastIndex)
+        val item = galleryLoop[loopIdx]
         when {
             item.demoId != null -> WallpaperRepository.applyDemo(this, item.demoId)
             item.libId != null -> WallpaperRepository.applyLibraryItem(this, item.libId)
+        }
+        if (recenter) {
+            recenterLoopIfNeeded(loopIdx)
+        } else {
+            galleryIndex = loopIdx
         }
         updatePageIndicator(galleryIndex)
         refreshUi()
@@ -421,10 +505,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updatePageIndicator(page: Int) {
-        if (!::pageIndicator.isInitialized || galleryItems.isEmpty()) return
-        val p = page.coerceIn(0, galleryItems.lastIndex)
-        val item = galleryItems[p]
-        pageIndicator.text = "左右滑动切换 · ${p + 1} / ${galleryItems.size}"
+        if (!::pageIndicator.isInitialized || galleryBase.isEmpty()) return
+        val real = realIndexOf(page)
+        val item = galleryBase[real]
+        pageIndicator.text = "左右滑动 · ${real + 1} / ${galleryBase.size} · 循环"
         if (::sourceTv.isInitialized) {
             sourceTv.text = item.label
         }
@@ -780,9 +864,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshUi() {
         if (!::sourceTv.isInitialized) return
-        // Keep gallery label; fall back to repo label if empty
-        if (galleryItems.isNotEmpty() && galleryIndex in galleryItems.indices) {
-            sourceTv.text = galleryItems[galleryIndex].label
+        if (galleryBase.isNotEmpty()) {
             updatePageIndicator(galleryIndex)
         } else {
             sourceTv.text = WallpaperRepository.labelForActive(this)

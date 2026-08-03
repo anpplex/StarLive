@@ -10,6 +10,18 @@
 - Lyra 侧可选依赖 `ring-wallpaper-core`（替代拷贝常量）
 - 实车矩阵逐项勾选归档
 
+## [0.1.10-car] — 2026-08-03
+
+### Fixed
+
+- Download 导入：多用户车机扫描 `Environment` 公共目录、`filesDir`、MediaStore；导入前申请读图权限
+
+### Verified on device (LD249H019625)
+
+- 示范切换 / 应用上屏
+- 导入确认 → 应用上屏 (cluster display 1)
+- 「已装 Lyra 时让路」ON → `lyra handoff` + release 星环
+
 ## [0.1.9-car] — 2026-08-03
 
 ### Fixed

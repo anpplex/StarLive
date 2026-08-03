@@ -1,13 +1,16 @@
 package com.starlive.app.wallpaper
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
+import com.starlive.app.runtime.PendingApplyStore
 import com.starlive.ring.StripGeometry
 import com.starlive.ring.WallpaperEdgeSoftener
-import com.starlive.app.runtime.PendingApplyStore
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -218,21 +221,78 @@ object WallpaperRepository {
         WallpaperLibrary.delete(context, libId)
 
     fun findDownloadCandidate(context: Context): File? {
-        val roots = listOfNotNull(
+        val app = context.applicationContext
+        val roots = mutableListOf<File>()
+        // Current user public dirs (multi-user safe vs hard-coded emulated/0)
+        runCatching {
+            roots += Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            roots += File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "StarLive")
+            roots += Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+        }
+        roots += listOf(
             File("/sdcard/Download/StarLive"),
-            File("/storage/emulated/0/Download/StarLive"),
             File("/sdcard/Download"),
+            File("/storage/emulated/0/Download/StarLive"),
             File("/storage/emulated/0/Download"),
             File("/sdcard/Pictures"),
             File("/storage/emulated/0/Pictures"),
-            context.getExternalFilesDir(null),
         )
-        for (root in roots) {
+        // App-private dirs (adb/run-as can drop files here for car multi-user testing)
+        roots += app.filesDir
+        roots += app.cacheDir
+        app.getExternalFilesDir(null)?.let { roots += it }
+        app.getExternalFilesDirs(null)?.filterNotNull()?.let { roots += it }
+        app.externalCacheDir?.let { roots += it }
+
+        for (root in roots.distinctBy { it.absolutePath }) {
             if (!root.isDirectory) continue
             for (name in DOWNLOAD_CANDIDATES) {
                 val f = File(root, name)
-                if (f.isFile && f.length() > 32L) return f
+                if (f.isFile && f.length() > 32L) {
+                    Log.i(TAG, "download candidate file=${f.absolutePath}")
+                    return f
+                }
             }
+        }
+
+        // MediaStore (car multi-user: adb-pushed files often only visible here)
+        findViaMediaStore(app)?.let { return it }
+        Log.w(TAG, "no download candidate; roots=${roots.map { it.absolutePath }}")
+        return null
+    }
+
+    private fun findViaMediaStore(context: Context): File? {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.SIZE,
+        )
+        for (name in DOWNLOAD_CANDIDATES) {
+            runCatching {
+                resolver.query(
+                    collection,
+                    projection,
+                    "${MediaStore.Images.Media.DISPLAY_NAME}=?",
+                    arrayOf(name),
+                    "${MediaStore.Images.Media.DATE_MODIFIED} DESC",
+                )?.use { c ->
+                    if (!c.moveToFirst()) return@use
+                    val id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                    val size = c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE))
+                    if (size in 1 until 32L) return@use
+                    val uri = ContentUris.withAppendedId(collection, id)
+                    val dest = File(context.cacheDir, "mediastore_$name")
+                    resolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(dest).use { output -> input.copyTo(output) }
+                    } ?: return@use
+                    if (dest.isFile && dest.length() > 32L) {
+                        Log.i(TAG, "download candidate mediastore name=$name size=${dest.length()}")
+                        return dest
+                    }
+                }
+            }.onFailure { Log.w(TAG, "MediaStore query failed for $name", it) }
         }
         return null
     }

@@ -570,6 +570,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openDownloadImport() {
+        // MediaStore path needs images permission on some HUs
+        val need = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            android.Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, need)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestReadImages.launch(need)
+            return
+        }
         val f = WallpaperRepository.findDownloadCandidate(this)
         if (f == null) {
             AlertDialog.Builder(this)

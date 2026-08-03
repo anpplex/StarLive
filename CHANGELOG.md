@@ -6,8 +6,12 @@
 
 ### Planned
 
-- Lyra 侧 ContentProvider 一键导入
 - 在线主题商店（非兑换码路径）
+
+### Changed
+
+- 升级到 Lyra 文案：说明 ContentProvider 直读路径
+- Lyra 对接文档：`docs/patches/lyra-import-starlive-handoff.md`（CP 优先）
 
 ## [0.1.6-redeem] — 2026-08-03
 

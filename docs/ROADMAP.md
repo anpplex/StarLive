@@ -28,7 +28,7 @@
 |----|------|
 | 多图本地库（导入保留、切换、长按删） | ✅ 0.1.4-lib |
 | ContentProvider handoff（星澜侧） | ✅ 0.1.4-lib `content://com.starlive.app.handoff/*` |
-| Lyra「从星澜 ContentProvider 导入」 | ⬜（Lyra 仓配合） |
+| Lyra「从星澜 ContentProvider 导入」 | ✅ Lyra `importFromStarLiveProvider`（下载导入优先 CP） |
 | 主题包兑换码（App 端 + LicenseHub API） | ✅ 0.1.5-redeem（`feature/theme-pack-redeem`） |
 | 主题包格式文档 + `make-theme-pack.sh` | ✅ 见 `docs/THEME-PACK.md` |
 | LicenseHub Admin「星澜兑换」发码 | ✅（LicenseHub 仓） |

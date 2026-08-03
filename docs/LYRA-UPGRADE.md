@@ -60,7 +60,7 @@
 
 | ID | 验收句 | 1.0 最低 | 理想 |
 |----|--------|----------|------|
-| U1 | 壁纸文件不丢 | 约定路径/导出包可被 Lyra 读 | 自动 FileProvider/ContentProvider 迁移 |
+| U1 | 壁纸文件不丢 | 约定路径/导出包可被 Lyra 读 | ✅ Lyra 优先 ContentProvider 直读 + Download 兜底 |
 | U2 | 空闲开关语义一致 | 文档对齐；Lyra 读同一 prefer 或引导一次同步 | 自动写 Lyra prefs |
 | U3 | 双装不抢空闲 | 星澜检测 Lyra 活跃则让路 | Lyra 安装广播后星澜自动 yield |
 | U4 | 播歌体验 | 星澜本就会让出 → Lyra 可占 | 升级引导说明「播歌归 Lyra」 |

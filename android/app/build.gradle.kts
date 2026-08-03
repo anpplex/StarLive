@@ -13,8 +13,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 23
-        versionName = "0.1.21-ambient"
+        versionCode = 24
+        versionName = "0.1.22-music"
         // Override at build: -PREDEEM_API_BASE=https://host
         buildConfigField(
             "String",

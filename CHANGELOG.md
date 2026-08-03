@@ -9,6 +9,14 @@
 - 在线主题商店（非兑换码路径）
 - QA 剩余 ⬜：M3 实车切歌；I1 第三方文件管理器内完整点选（选择器已通）
 
+## [0.1.22-music] — 2026-08-03
+
+### Fixed
+
+- **假播歌让出**：Wallpaper Engine / motif 等壁纸 MediaPlayer 使 `isMusicActive` 常 true
+- `MusicPlaybackFilter`：按 usage + 包名黑名单过滤；`MediaProbe` 优先读 `activePlaybackConfigurations`
+- NLS MediaSession 同样忽略壁纸包
+
 ## [0.1.21-ambient] — 2026-08-03
 
 ### UX / 远端

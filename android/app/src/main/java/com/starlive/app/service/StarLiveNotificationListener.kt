@@ -7,10 +7,12 @@ import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
 import android.util.Log
 import com.starlive.app.StarLiveApp
+import com.starlive.app.runtime.MusicPlaybackFilter
 
 /**
  * MediaSession probe for playing state only — no lyrics.
  * Without user grant, gate stays "not playing" (allow wallpaper).
+ * Ignores Wallpaper Engine / live-wallpaper sessions.
  */
 class StarLiveNotificationListener : NotificationListenerService() {
     private val callbacks = mutableMapOf<MediaController, MediaController.Callback>()
@@ -51,8 +53,10 @@ class StarLiveNotificationListener : NotificationListenerService() {
     }
 
     private fun publishBest() {
-        val playing = callbacks.keys.any {
-            it.playbackState?.state == PlaybackState.STATE_PLAYING
+        val playing = callbacks.keys.any { controller ->
+            val pkg = controller.packageName
+            if (pkg != null && MusicPlaybackFilter.isIgnoredPackage(pkg)) return@any false
+            controller.playbackState?.state == PlaybackState.STATE_PLAYING
         }
         publishPlaying(playing)
     }

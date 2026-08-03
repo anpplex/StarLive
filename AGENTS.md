@@ -65,3 +65,11 @@ cd $APP && ./gradlew :app:assembleDebug
 ## Git
 
 严格遵循 [`docs/GIT_WORKFLOW.md`](./docs/GIT_WORKFLOW.md)。
+
+## 默认工作节奏（Standing order）
+
+- **默认：持续推进开发**（按 `docs/ROADMAP.md` / TECH Phase 顺序开分支、实现、PR）。
+- **仅在以下情况暂停并询问用户：**
+  1. **Bug** 根因/修复策略有歧义，或实车不可复现需要决策；
+  2. **重要产品/架构决策**（改边界、改升级契约、改 applicationId、加订阅/联网等）。
+- 文档小补、脚手架、Phase 内实现、命名在 TECH 已定范围内的选择 → **直接做，不必逐步请示**。

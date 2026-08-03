@@ -5,7 +5,7 @@
 | Phase | 内容 | 状态 |
 |-------|------|------|
 | 0 | 文档 bootstrap + git main 推远程 | ✅ 2026-08-03 |
-| 0b | `android/` 空壳可 `assembleDebug` | ⬜ |
+| 0b | `android/` 空壳可 `assembleDebug` | 🔄 chore/android-skeleton |
 | 1 | 几何/软边 · Repository · Cluster 上屏 · 首页三键+demo | ⬜ |
 | 2 | 导入 · Cropper · 确认页 · 恢复示范 | ⬜ |
 | 3 | FGS · 播歌让出 · pending · 开机恢复 | ⬜ |

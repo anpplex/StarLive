@@ -303,41 +303,45 @@ class MainActivity : AppCompatActivity() {
         if (!::galleryRow.isInitialized) return
         val prevKey = galleryItems.getOrNull(galleryIndex)?.key
         galleryItems = buildGalleryList()
-        galleryRow.removeAllViews()
-        val w = galleryPageW.coerceAtLeast(resources.displayMetrics.widthPixels - dp(48))
-        val h = galleryHeroH.coerceAtLeast(dp(72))
-        galleryPageW = w
-        galleryItems.forEach { item ->
-            val iv = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(w, h)
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                setImageBitmap(loadGalleryBitmap(item))
-                contentDescription = item.label
-                setOnClickListener { applyWallpaper() }
-                setOnLongClickListener {
-                    if (item.libId != null) {
-                        confirmDeleteLibrary(item)
-                        true
-                    } else {
-                        false
+        // Wait until scroll view is measured so page width == viewport (snap works).
+        galleryScroll.post {
+            val w = galleryScroll.width.takeIf { it > 0 }
+                ?: (resources.displayMetrics.widthPixels - dp(48))
+            val h = galleryScroll.height.takeIf { it > 0 }
+                ?: galleryHeroH.coerceAtLeast(dp(72))
+            galleryPageW = w
+            galleryHeroH = h
+            galleryRow.removeAllViews()
+            galleryItems.forEach { item ->
+                val iv = ImageView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(w, h)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageBitmap(loadGalleryBitmap(item))
+                    contentDescription = item.label
+                    setOnClickListener { applyWallpaper() }
+                    setOnLongClickListener {
+                        if (item.libId != null) {
+                            confirmDeleteLibrary(item)
+                            true
+                        } else {
+                            false
+                        }
                     }
                 }
+                galleryRow.addView(iv)
             }
-            galleryRow.addView(iv)
-        }
-        var idx = when {
-            keepPage && prevKey != null ->
-                galleryItems.indexOfFirst { it.key == prevKey }.takeIf { it >= 0 }
-            else -> null
-        }
-        if (idx == null) {
-            val active = WallpaperRepository.activeId(this)
-            idx = galleryItems.indexOfFirst {
-                it.key == active || it.demoId == active || it.key == "lib:$active"
-            }.takeIf { it >= 0 } ?: 0
-        }
-        galleryIndex = idx.coerceIn(0, (galleryItems.size - 1).coerceAtLeast(0))
-        galleryScroll.post {
+            var idx = when {
+                keepPage && prevKey != null ->
+                    galleryItems.indexOfFirst { it.key == prevKey }.takeIf { it >= 0 }
+                else -> null
+            }
+            if (idx == null) {
+                val active = WallpaperRepository.activeId(this)
+                idx = galleryItems.indexOfFirst {
+                    it.key == active || it.demoId == active || it.key == "lib:$active"
+                }.takeIf { it >= 0 } ?: 0
+            }
+            galleryIndex = idx.coerceIn(0, (galleryItems.size - 1).coerceAtLeast(0))
             if (galleryItems.isEmpty()) return@post
             galleryScroll.scrollTo(galleryIndex * galleryPageW, 0)
             applyGallerySelection(galleryIndex, toast = false)

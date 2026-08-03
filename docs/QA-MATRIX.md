@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 版本基线 | **0.1.20-ui** |
+| 版本基线 | **0.1.22-music** |
 | 日期 | 2026-08-03 |
 | 车型 / 序列号 | ICHU3200E15-ADV · **LD249H019625** |
 | 用途 | 提测 / 发版前勾选；对照 [INTERACTION-1.0.md](./INTERACTION-1.0.md) |
@@ -16,7 +16,7 @@
 | 项 | 记录 |
 |----|------|
 | 车型 / 固件 | ICHU3200E15-ADV（华为车机 installer 旁路装机） |
-| 星澜 versionName / Code | **0.1.20-ui** / 22 |
+| 星澜 versionName / Code | **0.1.22-music** / 24 |
 | 是否双装 Lyra | **是** · `com.lyra.cluster` |
 | 测试人 / 日期 | 实车 adb · 2026-08-03 |
 
@@ -60,10 +60,11 @@ adb shell am start --user 12 -n com.starlive.app/.ui.MainActivity
 
 | # | 场景 | 期望 | 结果 |
 |---|------|------|------|
-| M1 | 空闲开 + 播歌 | 让出星环；通知可提示让出 | ✅ 0.1.11 网易云 + AudioManager 兜底 |
+| M1 | 空闲开 + 播歌 | 让出星环；通知可提示让出 | ✅ 0.1.11 网易云；**真音乐**回归 ⬜（需人工播歌） |
+| M1b | 仅 Wallpaper Engine / motif 壁纸在播 | **不**让出；可上屏 | ✅ **0.1.22-music** · `MusicPlaybackFilter` 忽略 WE；胶囊「已上屏」· `applyCurrent ok` |
 | M2 | 暂停 ≥8s | 夺回壁纸 | ✅ 0.1.11 ~8s after-play |
-| M3 | 切歌空隙 <3s | 不闪壁纸 | ⬜ 待连机（需人工切歌） |
-| M4 | 无通知使用权 | 仍可上壁纸；让出可能不准 + 有引导 | ⚠️ 车机 NLS 常不可用；0.1.11 已用 `isMusicActive` 兜底，上屏不受阻 |
+| M3 | 切歌空隙 <3s | 不闪壁纸 | ⬜ 待连机（需人工切歌）；单测 `PlaybackGateTest` ✅ |
+| M4 | 无通知使用权 | 仍可上壁纸；让出可能不准 + 有引导 | ⚠️ 车机 NLS 常不可用；0.1.22 过滤后的 `activePlaybackConfigurations` 兜底 |
 | M5 | 应用时正在播歌 | deferred 提示；停播后生效 | ✅ 0.1.11 |
 
 ---
@@ -126,10 +127,18 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | # | 场景 | 期望 | 结果 |
 |---|------|------|------|
-| U1 | 关于页 | 版本号、检查更新、导航入口；UiKit 卡片/按钮 | ✅ 0.1.20-ui `AboutActivity` 可启动 · 显示 0.1.20-ui (22) |
+| U1 | 关于页 | 版本号、检查更新、导航入口；UiKit 卡片/按钮 | ✅ 0.1.20-ui `AboutActivity` |
 | U2 | 规格说明 | 几何/导入约定卡片 | ✅ 0.1.20-ui `SpecActivity` |
 | U3 | 私人定制 | 文案 + 复制微信 | ✅ 0.1.20-ui `CustomActivity` |
 | U4 | 升级到 Lyra | Lyra 状态 + 导出 handoff + 打开 Lyra | ✅ 0.1.20-ui `UpgradeActivity`（双装时「打开 Lyra」） |
+
+### 7c. 远端日夜（0.1.21-ambient）
+
+| # | 场景 | 期望 | 结果 |
+|---|------|------|------|
+| A1 | 自动 + 车机自适应 | 读 `ui_night_mode=9`；有效浅/深 | ✅ 0.1.21 · adaptive(9) → day · glass `#E8EAEE` |
+| A2 | 设置改深色/浅色 | 羽化重烘焙 + 交叉淡入 | ⬜ 人工：设置→显示 |
+| A3 | 示范双图随日夜 | dark/light asset 切换 | ⬜ 依赖 A2 |
 
 ---
 
@@ -139,7 +148,9 @@ Admin：https://buy.998618.xyz/admin/ → 星澜兑换（发码 / 作废 / 登�
 
 | 版本 | 日期 | 必勾结果 | 备注 |
 |------|------|----------|------|
-| **0.1.20-ui** | 2026-08-03 | **U1–U4 ✅** · 二级页 UiKit 对齐 | 关于/规格/定制/升级 `am start` 冒烟；功能回归仍以 0.1.19 为准 |
+| **0.1.22-music** | 2026-08-03 | **M1b ✅** · WE 不挡上屏 · apply ok · 已上屏 | `MusicPlaybackFilter`；真音乐 M1 ⬜ |
+| **0.1.21-ambient** | 2026-08-03 | **A1 ✅** · 远端日夜自适应 | glass re-bake · AmbientWatch |
+| **0.1.20-ui** | 2026-08-03 | **U1–U4 ✅** · 二级页 UiKit 对齐 | 关于/规格/定制/升级冒烟 |
 | **0.1.19-qa** | 2026-08-03 | **R6 ✅** · **I1 ⚠️ 选择器可开** · 网络错误中文映射 | 不可达 API 复现断网；相册走系统/ES 选择器 |
 | **0.1.17-car** | 2026-08-03 | C1/C2 ✅ · R2 ✅ · L2/L4 ✅ · B4 播歌中正确让出 · L3 以 CP 为主 | MediaStore 导出 + KeepAlive 重申 + CI 边界 |
 | **0.1.14-car** | 2026-08-03 | I3–I5 ✅ · crop unit ✅ · process-start 0.4s | 裁切策略单测 + 实车 Download 导入确认页 |

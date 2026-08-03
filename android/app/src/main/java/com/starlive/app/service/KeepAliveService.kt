@@ -14,19 +14,42 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
+import com.starlive.app.runtime.MediaProbe
 import com.starlive.app.ui.MainActivity
 import com.starlive.app.wallpaper.WallpaperRepository
 
 class KeepAliveService : Service() {
+    private var mediaProbe: MediaProbe? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!WallpaperRepository.idlePrefer(this)) {
+            mediaProbe?.stop()
+            mediaProbe = null
             stopSelf()
             return START_NOT_STICKY
         }
         startAsForeground(yieldPlaying = isYieldPlaying())
+        ensureMediaProbe()
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        mediaProbe?.stop()
+        mediaProbe = null
+        super.onDestroy()
+    }
+
+    private fun ensureMediaProbe() {
+        if (mediaProbe != null) return
+        mediaProbe = MediaProbe(this) { active ->
+            (application as? StarLiveApp)?.orchestrator?.onRawPlaying(active)
+            // refresh notification text when play state flips
+            if (WallpaperRepository.idlePrefer(this)) {
+                startAsForeground(yieldPlaying = active || isYieldPlaying())
+            }
+        }.also { it.start() }
     }
 
     private fun isYieldPlaying(): Boolean {

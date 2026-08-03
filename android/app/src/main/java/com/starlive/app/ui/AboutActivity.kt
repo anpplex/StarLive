@@ -64,7 +64,10 @@ class AboutActivity : AppCompatActivity() {
         )
         col.addView(
             body(
-                "免责声明：第三方工具，与阿维塔 / 华为官方无关。系统升级可能导致功能变化或失效。\n\n" +
+                "开机恢复：空闲显示开启时，会在进程启动后尝试自动上屏。" +
+                    "部分车机系统不向第三方 App 投递开机广播，冷启后可能需手动打开星澜一次；" +
+                    "请在系统设置中允许「自启动 / 关联启动 / 忽略电池优化」以提高冷启成功率。\n\n" +
+                    "免责声明：第三方工具，与阿维塔 / 华为官方无关。系统升级可能导致功能变化或失效。\n\n" +
                     "安全：请在停车时设置壁纸，勿在驾驶过程中操作。\n\n" +
                     "隐私：默认不强制联网；图片仅本地处理；媒体播放状态仅用于播歌让出，不做歌词分析。" +
                     "使用「兑换主题」或「检查更新」时会联网。详见仓库 docs/PRIVACY.md。\n\n" +
@@ -137,8 +140,11 @@ class AboutActivity : AppCompatActivity() {
                 BatteryHelper.openBatterySettings(this)
                 Toast.makeText(
                     this,
-                    if (BatteryHelper.isIgnoringOptimizations(this)) "已忽略电池优化"
-                    else "请允许星澜忽略电池优化，利于开机恢复",
+                    if (BatteryHelper.isIgnoringOptimizations(this)) {
+                        "已忽略电池优化 · 仍建议在车机「自启动」中允许星澜"
+                    } else {
+                        "请允许忽略电池优化，并在系统自启动列表中允许星澜"
+                    },
                     Toast.LENGTH_LONG,
                 ).show()
             },

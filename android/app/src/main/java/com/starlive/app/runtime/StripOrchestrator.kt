@@ -1,6 +1,7 @@
 package com.starlive.app.runtime
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
 import com.starlive.app.display.ClusterDisplayController
 import com.starlive.app.service.KeepAliveService
@@ -12,6 +13,15 @@ import com.starlive.app.wallpaper.WallpaperRepository
  */
 class StripOrchestrator(private val app: Application) {
     val display = ClusterDisplayController(app)
+
+    /** Local broadcast so Main (and others) refresh capsule after async cluster launch. */
+    fun notifyUi(reason: String) {
+        runCatching {
+            app.sendBroadcast(
+                Intent(ACTION_UI_REFRESH).setPackage(app.packageName).putExtra(EXTRA_REASON, reason),
+            )
+        }
+    }
 
     private val playbackGate = PlaybackGate { playing ->
         if (playing) {
@@ -30,6 +40,14 @@ class StripOrchestrator(private val app: Application) {
     @Volatile
     var showing: Boolean = false
         private set
+
+    /** Reconcile capsule when cluster is already up but flags lagged. */
+    fun syncShowingFromDisplay() {
+        if (display.isAlive()) {
+            showing = true
+            lastError = null
+        }
+    }
 
     @Volatile
     private var handedOffToLyra: Boolean = false
@@ -95,13 +113,25 @@ class StripOrchestrator(private val app: Application) {
         showing = ok
         lastError = if (ok) null else "launch-failed"
         if (ok) PendingApplyStore.clear(app)
+        notifyUi("apply-$reason")
         Log.i(TAG, "applyCurrent ($reason) ok=$ok")
         return ok
+    }
+
+    /** ClusterStrip landed on real display — sync showing flag for home capsule. */
+    fun onClusterAlive(displayId: Int) {
+        display.onActivityResumed(displayId)
+        if (display.isAlive()) {
+            showing = true
+            lastError = null
+            notifyUi("cluster-alive")
+        }
     }
 
     fun release(reason: String) {
         display.release()
         showing = false
+        notifyUi("release-$reason")
         Log.i(TAG, "release ($reason)")
     }
 
@@ -141,5 +171,7 @@ class StripOrchestrator(private val app: Application) {
 
     companion object {
         private const val TAG = "StarLive"
+        const val ACTION_UI_REFRESH = "com.starlive.app.action.UI_REFRESH"
+        const val EXTRA_REASON = "reason"
     }
 }

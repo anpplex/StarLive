@@ -1,9 +1,13 @@
 package com.starlive.app.ui
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -21,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
+import com.starlive.app.runtime.StripOrchestrator
 import com.starlive.ring.StripGeometry
 import com.starlive.app.wallpaper.WallpaperRepository
 
@@ -35,6 +40,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var libraryHost: LinearLayout
 
     private val orch get() = (application as StarLiveApp).orchestrator
+
+    private val uiRefreshReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == StripOrchestrator.ACTION_UI_REFRESH) {
+                runOnUiThread {
+                    if (::statusTv.isInitialized) refreshUi()
+                }
+            }
+        }
+    }
 
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
@@ -452,10 +467,24 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        val filter = IntentFilter(StripOrchestrator.ACTION_UI_REFRESH)
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(uiRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(uiRefreshReceiver, filter)
+        }
         orch.refreshLyraHandoff("main-resume")
         rebuildLibraryRail()
         refreshUi()
         maybeSoftHints()
+        // process-start recover applies at 2.5s — refresh again so capsule is not stuck on 未上屏
+        statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
+    }
+
+    override fun onPause() {
+        runCatching { unregisterReceiver(uiRefreshReceiver) }
+        super.onPause()
     }
 
     private fun rebuildLibraryRail() {
@@ -624,7 +653,10 @@ class MainActivity : AppCompatActivity() {
             preview.setImageBitmap(BitmapFactory.decodeFile(f.absolutePath))
         }
         val idle = WallpaperRepository.idlePrefer(this)
-        val showing = orch.showing && orch.display.isAlive()
+        orch.syncShowingFromDisplay()
+        // Prefer live display probe: process-start recover launches cluster after onResume
+        val alive = orch.display.isAlive()
+        val launching = orch.showing && !alive
         val playing = orch.isEffectivelyPlaying()
         val handoff = orch.isHandedOffToLyra()
         when {
@@ -643,10 +675,15 @@ class MainActivity : AppCompatActivity() {
                 statusTv.setTextColor(Color.parseColor("#8B9BB4"))
                 heroSub.text = "已让出原厂星环 · 开「空闲显示」后可再上屏"
             }
-            showing -> {
+            alive -> {
                 statusTv.text = "已上屏"
                 statusTv.setTextColor(Color.parseColor("#7DDEA0"))
                 heroSub.text = "星环与预览一致 · 点预览可再应用"
+            }
+            launching -> {
+                statusTv.text = "上屏中…"
+                statusTv.setTextColor(Color.parseColor("#8BB4E0"))
+                heroSub.text = "正在打开星环 · 片刻后自动同步状态"
             }
             orch.lastError == "launch-failed" -> {
                 statusTv.text = "无法上屏"

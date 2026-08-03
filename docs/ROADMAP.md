@@ -44,6 +44,8 @@
 | adb 一键装机脚本 | ✅ `scripts/install-starlive.sh` |
 | 关于页检查更新 | ✅ 0.1.8-polish（GitHub Releases） |
 | 主题包 VPS 上传脚本 | ✅ `scripts/ops-upload-pack.sh` |
+| 进程启动自动恢复（补冷启无 BOOT） | ✅ 0.1.13-car |
+| 上屏胶囊状态与 cluster 同步 | ✅ 0.1.13-car |
 
 ## 发版
 
@@ -51,5 +53,7 @@
 |------|-----|------|
 | 0.1.7-core | `v0.1.7-core` | core 模块 + 1.1 功能收口 |
 | 0.1.8-polish | （可选 tag） | 检查更新 · handoff 加固 · ops 脚本 |
+| 0.1.12-car | `v0.1.12-car` | boot_probe · B1 已知限制 |
+| 0.1.13-car | （本分支） | process-start recover · 状态同步 |
 
 分支命名对齐：`feature/p0-phase1-strip-display` 等。见 [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) · [TECH-NOTES-1.0.md](./TECH-NOTES-1.0.md)。

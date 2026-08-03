@@ -26,6 +26,12 @@ class StarLiveApp : Application() {
         orchestrator.refreshLyraHandoff("app-start")
         if (WallpaperRepository.idlePrefer(this) && !orchestrator.isHandedOffToLyra()) {
             runCatching { KeepAliveService.start(this) }
+            // Cold-boot often never delivers BOOT to third-party apps on car HUs.
+            // Schedule the same recover path when the process is created by user open,
+            // force-stop recovery, or any other start — so "open once" restores strip.
+            if (WallpaperRepository.hasImage(this)) {
+                bootScheduler.schedule("process-start")
+            }
         }
         wallpaperCarousel.syncFromSettings()
         Log.i(TAG, "StarLiveApp onCreate ${BuildConfig.VERSION_NAME}")

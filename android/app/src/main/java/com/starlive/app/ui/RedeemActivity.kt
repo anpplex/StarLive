@@ -3,7 +3,6 @@ package com.starlive.app.ui
 import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
-import android.view.Gravity
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -12,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
+import com.starlive.app.StarLiveApp
 import com.starlive.app.device.DeviceIdentity
 import com.starlive.app.redeem.RedeemClient
 import com.starlive.app.redeem.ThemePackInstaller
@@ -19,6 +19,9 @@ import java.io.File
 import kotlin.concurrent.thread
 
 class RedeemActivity : AppCompatActivity() {
+    private lateinit var status: TextView
+    private lateinit var applyBtn: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val dens = resources.displayMetrics.density
@@ -55,7 +58,7 @@ class RedeemActivity : AppCompatActivity() {
             setSingleLine()
         }
         col.addView(input)
-        val status = TextView(this).apply {
+        status = TextView(this).apply {
             setTextColor(Color.parseColor("#C5D0E0"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(0, dp(12), 0, dp(8))
@@ -72,6 +75,19 @@ class RedeemActivity : AppCompatActivity() {
             )
         }
         col.addView(btn)
+        applyBtn = Button(this).apply {
+            text = "应用上屏"
+            isAllCaps = false
+            isEnabled = false
+            setBackgroundColor(Color.parseColor("#2A6B4A"))
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(48),
+            ).apply { topMargin = dp(8) }
+            setOnClickListener { applyToCluster() }
+        }
+        col.addView(applyBtn)
         col.addView(
             Button(this).apply {
                 text = "关闭"
@@ -99,6 +115,7 @@ class RedeemActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             btn.isEnabled = false
+            applyBtn.isEnabled = false
             status.text = "兑换中…"
             val deviceId = DeviceIdentity.deviceId(this)
             val base = BuildConfig.REDEEM_API_BASE
@@ -134,7 +151,8 @@ class RedeemActivity : AppCompatActivity() {
                 runOnUiThread {
                     btn.isEnabled = true
                     install.onSuccess { r ->
-                        status.text = "已安装「${r.title}」共 ${r.count} 张 · 点应用上屏"
+                        status.text = "已安装「${r.title}」共 ${r.count} 张 · 可点下方应用上屏"
+                        applyBtn.isEnabled = true
                         Toast.makeText(this, status.text, Toast.LENGTH_LONG).show()
                     }.onFailure { e ->
                         status.text = e.message ?: "安装失败"
@@ -143,5 +161,18 @@ class RedeemActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun applyToCluster() {
+        val orch = (application as StarLiveApp).orchestrator
+        if (orch.isEffectivelyPlaying()) {
+            orch.applyCurrent("redeem-apply-deferred")
+            status.text = "播歌中 · 停播后生效"
+            Toast.makeText(this, status.text, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val ok = orch.applyCurrent("redeem-apply")
+        status.text = if (ok) "已应用到星环" else "无法上屏 · 请确认星环 Display 可用"
+        Toast.makeText(this, status.text, Toast.LENGTH_SHORT).show()
     }
 }

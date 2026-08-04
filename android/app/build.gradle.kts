@@ -13,8 +13,8 @@ android {
         applicationId = "com.starlive.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 42
-        versionName = "0.1.38-crop-edit"
+        versionCode = 43
+        versionName = "0.1.39"
         // Override at build: -PREDEEM_API_BASE=https://host
         buildConfigField(
             "String",

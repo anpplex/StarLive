@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [0.1.39] — 2026-08-04
+
+### Import
+
+- 导入确认页 **回退** 为自动裁切预览（无拖动 / 缩放）；策略仍走 `WallpaperCropper`
+- 交互式裁切（`CropBandView` 拖动缩放）暂缓，代码备份于分支 `backup/0.1.38-crop-edit`，下版本再上
+
 ## [0.1.38-crop-edit] — 2026-08-04
 
 ### Import

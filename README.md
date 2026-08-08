@@ -30,7 +30,18 @@ cd android
 ./gradlew :ring-wallpaper-core:assembleDebug :app:assembleDebug
 ```
 
-APK：`android/app/build/outputs/apk/debug/app-debug.apk`
+Debug APK：`android/app/build/outputs/apk/debug/app-debug.apk`
+
+### Release 包命名
+
+统一为 **`StarLive-<versionName>.apk`**（例：`StarLive-0.1.41.apk`）：
+
+```bash
+cd android && ./gradlew :app:assembleRelease
+./scripts/package-release.sh          # → releases/StarLive-0.1.41.apk
+# 或一步构建+打包：
+./scripts/package-release.sh --build
+```
 
 单元测试：
 

@@ -2,7 +2,9 @@ package com.starlive.app.wallpaper
 
 /**
  * Pure encode/decode for library index.json (no Android JSONObject — JVM unit tests).
- * Format: [{"id":"...","label":"...","file":"..."}, ...]
+ * Format: [{"id":"...","label":"...","file":"...","kind":"static|gif|webp",
+ *           "cropL":0,"cropT":0,"cropR":0,"cropB":0}, ...]
+ * Optional fields: missing kind → infer from extension (else static); missing crop → 0.
  */
 object LibraryIndexCodec {
     fun encode(items: List<WallpaperLibrary.Item>): String {
@@ -10,7 +12,16 @@ object LibraryIndexCodec {
             val label = escape(item.label)
             val id = escape(item.id)
             val file = escape(item.fileName)
-            """{"id":"$id","label":"$label","file":"$file"}"""
+            val kind = escape(item.kind.ifBlank { AnimatedMedia.KIND_STATIC })
+            val base =
+                """{"id":"$id","label":"$label","file":"$file","kind":"$kind""""
+            if (item.hasCrop()) {
+                base +
+                    ""","cropL":${fmt(item.cropL)},"cropT":${fmt(item.cropT)},""" +
+                    """"cropR":${fmt(item.cropR)},"cropB":${fmt(item.cropB)}}"""
+            } else {
+                "$base}"
+            }
         }
     }
 
@@ -25,7 +36,27 @@ object LibraryIndexCodec {
             val id = stringField(o, "id") ?: continue
             val file = stringField(o, "file") ?: continue
             val label = stringField(o, "label") ?: id
-            out += WallpaperLibrary.Item(id = id, label = label, fileName = file)
+            val kindRaw = stringField(o, "kind")
+            val kind = when {
+                !kindRaw.isNullOrBlank() -> kindRaw
+                file.endsWith(".gif", ignoreCase = true) -> AnimatedMedia.KIND_GIF
+                file.endsWith(".webp", ignoreCase = true) -> AnimatedMedia.KIND_WEBP
+                else -> AnimatedMedia.KIND_STATIC
+            }
+            val cropL = numberField(o, "cropL") ?: 0f
+            val cropT = numberField(o, "cropT") ?: 0f
+            val cropR = numberField(o, "cropR") ?: 0f
+            val cropB = numberField(o, "cropB") ?: 0f
+            out += WallpaperLibrary.Item(
+                id = id,
+                label = label,
+                fileName = file,
+                kind = kind,
+                cropL = cropL,
+                cropT = cropT,
+                cropR = cropR,
+                cropB = cropB,
+            )
         }
         return out
     }
@@ -34,6 +65,17 @@ object LibraryIndexCodec {
         val re = Regex(""""$key"\s*:\s*"((?:\\.|[^"\\])*)"""")
         val m = re.find(json) ?: return null
         return unescape(m.groupValues[1])
+    }
+
+    private fun numberField(json: String, key: String): Float? {
+        val re = Regex(""""$key"\s*:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)""")
+        val m = re.find(json) ?: return null
+        return m.groupValues[1].toFloatOrNull()
+    }
+
+    private fun fmt(v: Float): String {
+        // Avoid scientific notation / trailing .0 noise for integers
+        return if (v == v.toLong().toFloat()) v.toLong().toString() else v.toString()
     }
 
     private fun escape(s: String): String =

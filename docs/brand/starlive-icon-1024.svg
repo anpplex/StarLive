@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="1024" height="1024" fill="#E5E5E5"/>
+<g id="05 &#194;&#183; &#229;&#175;&#188;&#229;&#135;&#186;&#229;&#176;&#177;&#231;&#187;&#170; Export Ready">
+<path d="M-80 -118C-80 -119.105 -79.1046 -120 -78 -120H3518C3519.1 -120 3520 -119.105 3520 -118V2378C3520 2379.1 3519.1 2380 3518 2380H-77.9999C-79.1045 2380 -80 2379.1 -80 2378V-118Z" fill="white"/>
+<path d="M-78 -120V-119H3518V-120V-121H-78V-120ZM3520 -118H3519V2378H3520H3521V-118H3520ZM3518 2380V2379H-77.9999V2380V2381H3518V2380ZM-80 2378H-79V-118H-80H-81V2378H-80ZM-77.9999 2380V2379C-78.5523 2379 -79 2378.55 -79 2378H-80H-81C-81 2379.66 -79.6567 2381 -77.9999 2381V2380ZM3520 2378H3519C3519 2378.55 3518.55 2379 3518 2379V2380V2381C3519.66 2381 3521 2379.66 3521 2378H3520ZM3518 -120V-119C3518.55 -119 3519 -118.552 3519 -118H3520H3521C3521 -119.657 3519.66 -121 3518 -121V-120ZM-78 -120V-121C-79.6569 -121 -81 -119.657 -81 -118H-80H-79C-79 -118.552 -78.5523 -119 -78 -119V-120Z" fill="black" fill-opacity="0.1"/>
+<g id="StarLive Icon 1024">
+<rect width="1024" height="1024" fill="#0B0E12"/>
+<circle id="Vignette" cx="512" cy="512" r="450" fill="#5B8DEF" fill-opacity="0.06"/>
+<circle id="Ring 560" cx="512" cy="512" r="280" stroke="#5B8DEF" stroke-opacity="0.35" stroke-width="10"/>
+<circle id="Ring 420" cx="512" cy="512" r="210" stroke="#5B8DEF" stroke-opacity="0.75" stroke-width="14"/>
+<circle id="Ring 280" cx="512" cy="512" r="140" stroke="#7AA5F5" stroke-width="18"/>
+<circle id="Core Glow" cx="512" cy="512" r="48" fill="#5B8DEF" fill-opacity="0.45"/>
+<circle id="Core" cx="512" cy="512" r="24" fill="white"/>
+<circle id="Spark" cx="540" cy="470" r="7" fill="white" fill-opacity="0.9"/>
+</g>
+</g>
+</svg>

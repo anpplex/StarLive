@@ -36,7 +36,8 @@ class BootRecoverScheduler(
 
     private fun tick(reason: String) {
         if (!WallpaperRepository.idlePrefer(app)) return
-        if (orchestrator.isHandedOffToLyra()) {
+        // Re-check install state each tick (Lyra may appear mid-schedule).
+        if (orchestrator.refreshLyraHandoff("boot-tick-$reason")) {
             Log.i(TAG, "boot tick skip lyra handoff ($reason)")
             return
         }
@@ -45,6 +46,16 @@ class BootRecoverScheduler(
             return
         }
         if (!WallpaperRepository.hasImage(app)) return
+        // Healthy strip: do not force-relaunch (avoids flash on every boot tick).
+        if (orchestrator.display.isAlive()) {
+            orchestrator.syncShowingFromDisplay()
+            Log.i(TAG, "boot tick already alive ($reason)")
+            return
+        }
+        // Stuck「连接中…」(showing but not alive) or 未显示 — never skip; force re-launch.
+        if (orchestrator.showing) {
+            Log.w(TAG, "boot tick recover stuck launching ($reason)")
+        }
         orchestrator.applyCurrent("boot-$reason")
     }
 

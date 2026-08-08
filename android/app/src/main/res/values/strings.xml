@@ -8,7 +8,7 @@
     <string name="import_from_gallery">从系统图库导入</string>
     <string name="import_from_file">从文件选择</string>
     <string name="import_filename_help">规格与命名说明</string>
-    <string name="import_filename_detail">推荐尺寸 2990×284。全宽 4032 条带图将裁取右侧壁纸区。\n\n「从系统图库导入」读取车机媒体库（MediaStore）中的图片。\n\n若通过 adb / 文件管理放入 Download，可命名为：\n• starlive_wallpaper.jpg / .png\n• 兼容 lyra_wallpaper、cluster_wallpaper</string>
+    <string name="import_filename_detail">推荐尺寸 2990×284。全宽 4032 条带图将裁取右侧壁纸区。\n\n支持 JPEG / PNG 静态图与 GIF / WebP 动图。\n\n「从系统图库导入」读取车机媒体库（MediaStore）中的图片。\n\n若通过 adb / 文件管理放入 Download，可命名为：\n• starlive_wallpaper.jpg / .png / .gif / .webp\n• 兼容 lyra_wallpaper、cluster_wallpaper</string>
     <string name="no_download_title">未找到壁纸文件</string>
     <string name="no_download_msg">图库与文件选择均不可用时，可将 starlive_wallpaper.jpg 放入 Download 后再试。</string>
     <string name="need_storage">需要存储权限以读取图片</string>
@@ -32,6 +32,7 @@
     <string name="status_hidden">未显示</string>
     <string name="status_closed">已关闭</string>
     <string name="status_launching">连接中…</string>
+    <string name="hero_launching">正在连接星环…</string>
     <string name="status_fail">无法显示</string>
     <string name="hero_hidden">点「应用到星环」完成显示</string>
     <string name="hero_closed">可在显示设置中重新开启</string>

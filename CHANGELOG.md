@@ -4,6 +4,36 @@
 
 ## [Unreleased]
 
+## [0.1.41] — 2026-08-08
+
+### Strip / status
+
+- 修复星环上屏后偶发卡在「连接中…」：`startActivity` 成功即 `showing=true`，但 activity 未在 cluster 确认时从不清理
+- `StripOrchestrator` 启动确认超时（5s）：未 alive 则清除 stuck 状态 + 每次 apply 静默 force 重试一次
+- 误落到 DEFAULT 显示 / `onDestroy` 时同步 `showing=false` 并刷新首页胶囊
+- 开机恢复仍在 `showing && !alive` 时强制 `applyCurrent` 重拉起
+
+### Lyra 优先
+
+- handoff 已开启时幂等再释放：strip 若被 race 拉回则 `ensureReleasedForLyra`
+- `onClusterAlive` / launch-timeout / boot tick / StartupReceiver 均尊重 Lyra，禁止覆盖星环
+- 默认 `yieldWhenLyraInstalled=true` 不变
+
+## [0.1.40] — 2026-08-08
+
+### Import / crop
+
+- 恢复交互式裁切（`CropBandView` 拖动 / 缩放 / 按钮）与确认页导出 2990×284
+- 静态图：裁切后 JPEG 入库（既有路径）
+- 动图 GIF / 动画 WebP：原文件入库 + 源像素裁切框；播放时用矩阵映射，不逐帧重编码
+
+### Animated wallpaper
+
+- 星环条：`AnimatedImageDrawable` 播放 GIF/WebP；裁切用 `ImageView` MATRIX；左缘玻璃 dissolve 用渐变 overlay（不烤帧）
+- 首页横滑预览：库内动图同样 `setImageDrawable` + `start()`
+- OpenDocument / Download 候选支持 `image/gif`、`image/webp`
+- `active_kind` + `active_crop` + `active_wallpaper.gif|.webp`
+
 ## [0.1.39] — 2026-08-04
 
 ### Import

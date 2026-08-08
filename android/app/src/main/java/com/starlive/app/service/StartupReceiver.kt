@@ -23,13 +23,19 @@ class StartupReceiver : BroadcastReceiver() {
                 "${System.currentTimeMillis()}\t$action\tidle=${WallpaperRepository.idlePrefer(appCtx)}\tv=${BuildConfig.VERSION_NAME}\n"
             File(appCtx.filesDir, "boot_probe.log").appendText(line)
         }
-        if (WallpaperRepository.idlePrefer(appCtx)) {
-            runCatching { KeepAliveService.start(appCtx) }
-                .onFailure { Log.e(TAG, "KeepAlive start failed", it) }
-        }
         Handler(Looper.getMainLooper()).postDelayed({
             runCatching {
                 val app = appCtx as? StarLiveApp ?: return@runCatching
+                // Lyra 优先：不得在开机路径上拉起 KeepAlive / 星环恢复。
+                val handoff = app.orchestrator.refreshLyraHandoff("startup-$action")
+                if (handoff) {
+                    Log.i(TAG, "startup skip recover — Lyra handoff")
+                    return@runCatching
+                }
+                if (WallpaperRepository.idlePrefer(appCtx)) {
+                    runCatching { KeepAliveService.start(appCtx) }
+                        .onFailure { Log.e(TAG, "KeepAlive start failed", it) }
+                }
                 app.bootScheduler.schedule(action.ifBlank { "startup" })
             }.onFailure { Log.e(TAG, "boot schedule failed", it) }
             pending.finish()

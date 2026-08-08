@@ -2,83 +2,94 @@ package com.starlive.app.ui
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.RectF
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
-import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.R
 import com.starlive.app.StarLiveApp
 import com.starlive.app.runtime.PendingApplyStore
-import com.starlive.app.ui.UiTokens.applyRoundedBg
 import com.starlive.app.ui.UiTokens.dp
+import com.starlive.app.wallpaper.AnimatedMedia
 import com.starlive.app.wallpaper.WallpaperRepository
+import com.starlive.ring.CropStrategy
 import com.starlive.ring.StripGeometry
-import com.starlive.ring.WallpaperCropper
 import java.io.File
 
 /**
- * Always shown after import (INTERACTION). Auto-crop via [WallpaperCropper]; Apply = save + try strip.
- * Interactive pan/zoom deferred to a later release (see backup/0.1.38-crop-edit).
+ * Import confirm: interactive pan/zoom crop to 2990×284 wallpaper band, then apply.
+ * Static → JPEG export; animated GIF/WebP → keep original bytes + crop rect.
  */
 class ImportConfirmActivity : AppCompatActivity() {
-    private var cropped: Bitmap? = null
+    private var source: Bitmap? = null
     private var sourceLabel: String = "导入"
+    private var sourceW: Int = 0
+    private var sourceH: Int = 0
+    private var isAnimated = false
+    private var sourceMime: String? = null
+    private var sourceBytes: ByteArray? = null
+    private lateinit var cropView: CropBandView
+    private lateinit var info: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val root = LinearLayout(this).apply {
+        val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(UiTokens.bg)
             setPadding(dp(20), dp(16), dp(20), dp(16))
         }
-        root.addView(UiKit.title(this, "确认壁纸"))
-        root.addView(
-            UiKit.caption(this, "左侧为表盘保留区，请勿放置关键内容")
-                .also { it.setPadding(0, dp(6), 0, dp(12)) },
+        col.addView(UiKit.title(this, "调整裁切"))
+        col.addView(
+            UiKit.caption(this, "拖动移动画面 · 双指或按钮缩放 · 框内为星环壁纸区（2990×284）")
+                .also { it.setPadding(0, dp(6), 0, dp(10)) },
         )
 
         val card = UiKit.card(this)
-        val heroH = dp(72)
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        cropView = CropBandView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                heroH,
+                dp(168),
             )
-            applyRoundedBg(UiTokens.heroBg, 10f)
-        }
-        val gaugeW = heroH * StripGeometry.GAUGE_RESERVE / StripGeometry.STRIP_H
-        hero.addView(
-            TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(gaugeW, heroH)
-                applyRoundedBg(UiTokens.gaugeBg, 0f)
-                gravity = Gravity.CENTER
-                text = "表盘"
-                setTextColor(UiTokens.textMuted)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-            },
-        )
-        val preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
-            layoutParams = LinearLayout.LayoutParams(0, heroH, 1f)
             contentDescription = "裁切预览"
+            onTransformChanged = { updateInfo() }
         }
-        hero.addView(preview)
-        card.addView(hero)
+        card.addView(cropView)
 
-        val info = TextView(this).apply {
+        info = TextView(this).apply {
             setTextColor(UiTokens.textSecondary)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(0, dp(12), 0, dp(4))
             setLineSpacing(0f, 1.25f)
         }
         card.addView(info)
-        root.addView(card)
+
+        val zoomRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, 0)
+        }
+        fun zoomBtn(label: String, block: () -> Unit) =
+            UiKit.secondaryButton(this@ImportConfirmActivity, label, block).also {
+                it.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = dp(8)
+                }
+            }
+        zoomRow.addView(zoomBtn("缩小") { cropView.zoomBy(0.85f) })
+        zoomRow.addView(zoomBtn("放大") { cropView.zoomBy(1.18f) })
+        zoomRow.addView(
+            UiKit.secondaryButton(this, "重置") { cropView.resetToCover() }.also {
+                it.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            },
+        )
+        card.addView(zoomRow)
+        col.addView(card)
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -89,7 +100,7 @@ class ImportConfirmActivity : AppCompatActivity() {
         }
         row.addView(
             UiKit.secondaryButton(this, "取消") {
-                cropped?.recycle()
+                recycleSource()
                 setResult(RESULT_CANCELED)
                 finish()
             },
@@ -101,38 +112,159 @@ class ImportConfirmActivity : AppCompatActivity() {
             UiKit.primaryButton(this, getString(R.string.btn_apply)) { commitAndApply() },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f),
         )
-        root.addView(row)
-        setContentView(root)
+        col.addView(row)
 
-        val result = loadCrop()
-        if (result == null) {
+        setContentView(
+            ScrollView(this).apply {
+                setBackgroundColor(UiTokens.bg)
+                isFillViewport = true
+                addView(col)
+            },
+        )
+
+        sourceLabel = intent.getStringExtra(EXTRA_LABEL) ?: "导入"
+        val bmp = loadSource()
+        if (bmp == null) {
             Toast.makeText(this, "无法读取图片", Toast.LENGTH_LONG).show()
             setResult(RESULT_CANCELED)
             finish()
             return
         }
-        cropped = result.bitmap
-        sourceLabel = intent.getStringExtra(EXTRA_LABEL) ?: "导入"
-        preview.setImageBitmap(result.bitmap)
-        info.text = "原图 ${result.sourceW}×${result.sourceH}\n${result.strategyLabelZh}"
+        source = bmp
+        sourceW = bmp.width
+        sourceH = bmp.height
+        cropView.setSourceBitmap(bmp)
+        updateInfo()
     }
 
-    private fun loadCrop(): WallpaperCropper.Result? {
+    override fun onDestroy() {
+        recycleSource()
+        super.onDestroy()
+    }
+
+    private fun updateInfo() {
+        if (!::info.isInitialized) return
+        val strategy = CropStrategy.choose(sourceW, sourceH)
+        val hint = when (strategy) {
+            CropStrategy.Strategy.EXACT -> "接近标准壁纸尺寸"
+            CropStrategy.Strategy.BAND -> "检测到全条图，可拖动选择壁纸区"
+            CropStrategy.Strategy.CENTER -> "居中适配，可拖动 / 缩放调整构图"
+        }
+        val z = if (::cropView.isInitialized) {
+            String.format("%.0f%%", cropView.zoomFactor() * 100f)
+        } else {
+            "—"
+        }
+        val animNote = if (isAnimated) {
+            val kind = when {
+                sourceMime?.contains("gif", ignoreCase = true) == true -> "GIF"
+                sourceMime?.contains("webp", ignoreCase = true) == true -> "WebP"
+                else -> "GIF/WebP"
+            }
+            "\n$kind 动图保留动画（裁切参数会随壁纸保存）"
+        } else {
+            ""
+        }
+        info.text =
+            "原图 ${sourceW}×${sourceH} · 输出 ${StripGeometry.WALLPAPER_W}×${StripGeometry.WALLPAPER_H}\n" +
+                "$hint · 缩放 $z$animNote"
+    }
+
+    private fun loadSource(): Bitmap? {
+        val bytes = loadBytes() ?: return null
+        sourceBytes = bytes
+        detectAnimated(bytes)
+        return decodeBounded(bytes)
+    }
+
+    private fun loadBytes(): ByteArray? {
         val path = intent.getStringExtra(EXTRA_PATH)
         if (!path.isNullOrBlank()) {
-            return WallpaperCropper.decodeAndCrop(File(path))
+            val f = File(path)
+            if (!f.isFile) return null
+            sourceMime = when (f.extension.lowercase()) {
+                "gif" -> "image/gif"
+                "webp" -> "image/webp"
+                "png" -> "image/png"
+                "jpg", "jpeg" -> "image/jpeg"
+                else -> null
+            }
+            return runCatching { f.readBytes() }.getOrNull()
         }
         @Suppress("DEPRECATION")
         val uri = intent.getParcelableExtra<android.net.Uri>(EXTRA_URI)
         if (uri != null) {
-            return contentResolver.openInputStream(uri)?.use { WallpaperCropper.decodeAndCrop(it) }
+            sourceMime = contentResolver.getType(uri)
+            return contentResolver.openInputStream(uri)?.use { it.readBytes() }
         }
         return null
     }
 
+    private fun detectAnimated(bytes: ByteArray) {
+        val kind = AnimatedMedia.kindFromMimeOrBytes(sourceMime, bytes)
+        if (AnimatedMedia.isAnimatedKind(kind)) {
+            isAnimated = true
+            sourceMime = when (kind) {
+                AnimatedMedia.KIND_GIF -> "image/gif"
+                AnimatedMedia.KIND_WEBP -> "image/webp"
+                else -> sourceMime ?: AnimatedMedia.sniffMime(bytes)
+            }
+            return
+        }
+        // Prefer sniffed mime for static path labeling.
+        if (sourceMime.isNullOrBlank()) {
+            sourceMime = AnimatedMedia.sniffMime(bytes)
+        }
+        isAnimated = false
+    }
+
+    /** Decode with side cap to avoid OOM on HU; interactive crop uses this bitmap. */
+    private fun decodeBounded(bytes: ByteArray): Bitmap? {
+        if (bytes.size < 32) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val sw = bounds.outWidth
+        val sh = bounds.outHeight
+        if (!CropStrategy.isValidBounds(sw, sh)) return null
+        var sample = 1
+        var cw = sw
+        var ch = sh
+        val maxSide = 4096
+        while (cw > maxSide || ch > maxSide) {
+            sample *= 2
+            cw = sw / sample
+            ch = sh / sample
+        }
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+    }
+
     private fun commitAndApply() {
-        val bmp = cropped ?: return
-        if (!WallpaperRepository.commitCropped(this, bmp, sourceLabel)) {
+        val okSave = if (isAnimated) {
+            val bytes = sourceBytes
+            if (bytes == null || bytes.size < 32) {
+                Toast.makeText(this, "动图数据丢失", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val cropDisplay = cropView.sourceCropRect()
+            val cropFull = scaleCropToOriginal(cropDisplay)
+                ?: RectF(0f, 0f, sourceW.toFloat().coerceAtLeast(1f), sourceH.toFloat().coerceAtLeast(1f))
+            val mime = sourceMime
+                ?: AnimatedMedia.sniffMime(bytes)
+                ?: "image/gif"
+            WallpaperRepository.commitAnimated(this, bytes, mime, cropFull, sourceLabel)
+        } else {
+            val bmp = cropView.exportCropped()
+            if (bmp == null) {
+                Toast.makeText(this, "裁切失败", Toast.LENGTH_SHORT).show()
+                return
+            }
+            WallpaperRepository.commitCropped(this, bmp, sourceLabel)
+        }
+        if (!okSave) {
             Toast.makeText(this, "保存失败", Toast.LENGTH_SHORT).show()
             return
         }
@@ -150,6 +282,38 @@ class ImportConfirmActivity : AppCompatActivity() {
         ).show()
         setResult(RESULT_OK)
         finish()
+    }
+
+    /**
+     * [sourceCropRect] is in the (possibly subsampled) decode bitmap space.
+     * Map back to original file pixel coordinates for animated playback crop.
+     */
+    private fun scaleCropToOriginal(crop: RectF?): RectF? {
+        if (crop == null) return null
+        val bmp = source ?: return crop
+        if (bmp.width <= 0 || bmp.height <= 0) return crop
+        val bytes = sourceBytes ?: return crop
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val ow = bounds.outWidth
+        val oh = bounds.outHeight
+        if (ow <= 0 || oh <= 0 || (ow == bmp.width && oh == bmp.height)) return crop
+        val sx = ow.toFloat() / bmp.width
+        val sy = oh.toFloat() / bmp.height
+        return RectF(
+            crop.left * sx,
+            crop.top * sy,
+            crop.right * sx,
+            crop.bottom * sy,
+        )
+    }
+
+    private fun recycleSource() {
+        source?.let {
+            if (!it.isRecycled) it.recycle()
+        }
+        source = null
+        sourceBytes = null
     }
 
     companion object {

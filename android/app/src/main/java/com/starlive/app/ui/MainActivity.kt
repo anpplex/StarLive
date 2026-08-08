@@ -9,7 +9,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -38,6 +42,7 @@ import com.starlive.app.runtime.StripOrchestrator
 import com.starlive.app.service.KeepAliveService
 import com.starlive.app.ui.UiTokens.applyRoundedBg
 import com.starlive.app.ui.UiTokens.dp
+import com.starlive.app.wallpaper.AnimatedMedia
 import com.starlive.app.wallpaper.WallpaperLibrary
 import com.starlive.app.wallpaper.WallpaperRepository
 import com.starlive.ring.StripGeometry
@@ -195,6 +200,23 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, dp(4))
         }
+        // App mark (launcher bitmap) beside title
+        top.addView(
+            ImageView(this).apply {
+                setImageResource(R.drawable.ic_launcher_bitmap)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = getString(R.string.app_name)
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
+                    marginEnd = dp(10)
+                }
+                clipToOutline = true
+                outlineProvider = object : android.view.ViewOutlineProvider() {
+                    override fun getOutline(view: android.view.View, outline: android.graphics.Outline) {
+                        outline.setRoundRect(0, 0, view.width, view.height, dp(10).toFloat())
+                    }
+                }
+            },
+        )
         val titles = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -415,12 +437,12 @@ class MainActivity : AppCompatActivity() {
                 ?: galleryHeroH.coerceAtLeast(dp(72))
             galleryPageW = w
             galleryHeroH = h
+            stopGalleryAnimations()
             galleryRow.removeAllViews()
             galleryLoop.forEach { item ->
                 val iv = ImageView(this).apply {
                     layoutParams = LinearLayout.LayoutParams(w, h)
                     scaleType = ImageView.ScaleType.CENTER_CROP
-                    setImageBitmap(loadGalleryBitmap(item))
                     contentDescription = item.label
                     setOnClickListener { applyWallpaper() }
                     setOnLongClickListener {
@@ -432,6 +454,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+                bindGalleryImage(iv, item, w, h)
                 galleryRow.addView(iv)
             }
             if (galleryBase.isEmpty()) {
@@ -464,6 +487,80 @@ class MainActivity : AppCompatActivity() {
         val n = galleryBase.size
         if (n <= 0) return 0
         return ((loopIndex % n) + n) % n
+    }
+
+    /**
+     * Library GIF/WebP → [AnimatedImageDrawable] + optional crop matrix.
+     * Demos / static library → bitmap as before.
+     */
+    private fun bindGalleryImage(iv: ImageView, item: GalleryItem, viewW: Int, viewH: Int) {
+        if (item.libId != null) {
+            val lib = WallpaperRepository.libraryItems(this).firstOrNull { it.id == item.libId }
+            if (lib != null && AnimatedMedia.isAnimatedKind(lib.kind)) {
+                val drawable = WallpaperRepository.decodeDrawableFile(lib.file(this))
+                if (drawable != null) {
+                    applyGalleryDrawable(iv, drawable, lib.cropRect(), viewW, viewH)
+                    return
+                }
+            }
+        }
+        iv.scaleType = ImageView.ScaleType.CENTER_CROP
+        iv.imageMatrix = Matrix()
+        iv.setImageBitmap(loadGalleryBitmap(item))
+    }
+
+    private fun applyGalleryDrawable(
+        iv: ImageView,
+        drawable: Drawable,
+        crop: RectF?,
+        viewW: Int,
+        viewH: Int,
+    ) {
+        val imgW = drawable.intrinsicWidth
+        val imgH = drawable.intrinsicHeight
+        if (crop != null && crop.width() > 1f && crop.height() > 1f && imgW > 0 && imgH > 0) {
+            val src = RectF(
+                crop.left.coerceIn(0f, imgW.toFloat()),
+                crop.top.coerceIn(0f, imgH.toFloat()),
+                crop.right.coerceIn(1f, imgW.toFloat()),
+                crop.bottom.coerceIn(1f, imgH.toFloat()),
+            )
+            if (src.width() >= 1f && src.height() >= 1f) {
+                val m = Matrix()
+                m.setRectToRect(
+                    src,
+                    RectF(0f, 0f, viewW.toFloat(), viewH.toFloat()),
+                    Matrix.ScaleToFit.FILL,
+                )
+                iv.scaleType = ImageView.ScaleType.MATRIX
+                iv.imageMatrix = m
+                iv.setImageDrawable(drawable)
+                startGalleryDrawable(drawable)
+                return
+            }
+        }
+        iv.scaleType = ImageView.ScaleType.CENTER_CROP
+        iv.imageMatrix = Matrix()
+        iv.setImageDrawable(drawable)
+        startGalleryDrawable(drawable)
+    }
+
+    private fun startGalleryDrawable(drawable: Drawable) {
+        if (drawable is AnimatedImageDrawable) {
+            drawable.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
+            drawable.start()
+        }
+    }
+
+    private fun stopGalleryAnimations() {
+        if (!::galleryRow.isInitialized) return
+        for (i in 0 until galleryRow.childCount) {
+            val iv = galleryRow.getChildAt(i) as? ImageView ?: continue
+            val d = iv.drawable
+            if (d is AnimatedImageDrawable) {
+                runCatching { d.stop() }
+            }
+        }
     }
 
     private fun loadGalleryBitmap(item: GalleryItem): Bitmap? {
@@ -854,12 +951,19 @@ class MainActivity : AppCompatActivity() {
         if (::statusTv.isInitialized) {
             statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 900L)
             statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 3_200L)
+            // Catch launch-confirm timeout (~5s) clearing stuck「连接中…」.
+            statusTv.postDelayed({ if (!isFinishing) refreshUi() }, 5_500L)
         }
     }
 
     override fun onPause() {
         runCatching { unregisterReceiver(uiRefreshReceiver) }
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        stopGalleryAnimations()
+        super.onDestroy()
     }
 
     private fun maybeSoftHints() {
@@ -963,7 +1067,15 @@ class MainActivity : AppCompatActivity() {
     /** SAF OpenDocument — files, Download, USB, ES File Explorer, etc. */
     private fun openFilePicker() {
         val opened = runCatching {
-            pickDocument.launch(arrayOf("image/*", "image/jpeg", "image/png"))
+            pickDocument.launch(
+                arrayOf(
+                    "image/*",
+                    "image/jpeg",
+                    "image/png",
+                    "image/gif",
+                    "image/webp",
+                ),
+            )
             true
         }.getOrDefault(false)
         if (opened) return
@@ -1052,7 +1164,7 @@ class MainActivity : AppCompatActivity() {
             launching -> styleStatus(
                 getString(R.string.status_launching),
                 UiTokens.info,
-                "",
+                getString(R.string.hero_launching),
             )
             orch.lastError == "launch-failed" -> styleStatus(
                 getString(R.string.status_fail),

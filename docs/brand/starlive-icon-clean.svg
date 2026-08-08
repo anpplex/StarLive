@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- StarLive 星澜 · 星环光环 — Huawei car HMI adaptive icon (1024², no corner radius) -->
+  <rect width="1024" height="1024" fill="#0B0E12"/>
+  <circle cx="512" cy="512" r="450" fill="#5B8DEF" fill-opacity="0.06"/>
+  <circle cx="512" cy="512" r="280" stroke="#5B8DEF" stroke-opacity="0.35" stroke-width="10"/>
+  <circle cx="512" cy="512" r="210" stroke="#5B8DEF" stroke-opacity="0.75" stroke-width="14"/>
+  <circle cx="512" cy="512" r="140" stroke="#7AA5F5" stroke-width="18"/>
+  <circle cx="512" cy="512" r="48" fill="#5B8DEF" fill-opacity="0.45"/>
+  <circle cx="512" cy="512" r="24" fill="white"/>
+  <circle cx="540" cy="470" r="7" fill="white" fill-opacity="0.9"/>
+</svg>

@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -20,6 +23,10 @@ import java.io.FileOutputStream
 
 /**
  * Demo catalog + active wallpaper file. Keys namespaced for Lyra handoff safety.
+ *
+ * Active media may be static JPEG (`active_wallpaper.jpg`) or animated
+ * (`active_wallpaper.gif` / `active_wallpaper.webp`) selected via prefs
+ * [KEY_ACTIVE_KIND] + optional [KEY_ACTIVE_CROP].
  */
 object WallpaperRepository {
     private const val TAG = "StarLive"
@@ -35,21 +42,38 @@ object WallpaperRepository {
     private const val KEY_YIELD_LYRA = "yield_when_lyra_installed"
     private const val KEY_NLS_HINT = "nls_hint_shown"
     private const val KEY_BATTERY_HINT = "battery_hint_shown"
+    private const val KEY_ACTIVE_KIND = "active_kind"
+    private const val KEY_ACTIVE_CROP = "active_crop"
     private const val FILE_ACTIVE = "active_wallpaper.jpg"
+    private const val FILE_ACTIVE_GIF = "active_wallpaper.gif"
+    private const val FILE_ACTIVE_WEBP = "active_wallpaper.webp"
     private const val CATALOG = "wallpaper/catalog.json"
     const val CAROUSEL_MIN = 1
     const val CAROUSEL_MAX = 60
     const val CAROUSEL_DEFAULT = 5
 
+    /** Kind constants (mirrored from [AnimatedMedia] for call-site convenience). */
+    const val KIND_STATIC = AnimatedMedia.KIND_STATIC
+    const val KIND_GIF = AnimatedMedia.KIND_GIF
+    const val KIND_WEBP = AnimatedMedia.KIND_WEBP
+
     val DOWNLOAD_CANDIDATES = listOf(
         "starlive_wallpaper.jpg",
         "starlive_wallpaper.png",
+        "starlive_wallpaper.gif",
+        "starlive_wallpaper.webp",
         "lyra_wallpaper.jpg",
         "lyra_wallpaper.png",
+        "lyra_wallpaper.gif",
+        "lyra_wallpaper.webp",
         "cluster_wallpaper.jpg",
         "cluster_wallpaper.png",
+        "cluster_wallpaper.gif",
+        "cluster_wallpaper.webp",
         "lyra_cluster_wallpaper.jpg",
         "lyra_cluster_wallpaper.png",
+        "lyra_cluster_wallpaper.gif",
+        "lyra_cluster_wallpaper.webp",
     )
 
     data class Demo(
@@ -150,8 +174,85 @@ object WallpaperRepository {
         return if (applyDemo(context, next.id)) next.id else null
     }
 
+    /** Current active kind: [AnimatedMedia.KIND_STATIC], [AnimatedMedia.KIND_GIF], or [AnimatedMedia.KIND_WEBP]. */
+    fun activeKind(context: Context): String {
+        val raw = prefs(context).getString(KEY_ACTIVE_KIND, null)
+        if (!raw.isNullOrBlank()) return raw
+        // Legacy installs: infer from which active file exists
+        val dir = context.applicationContext.filesDir
+        return when {
+            File(dir, FILE_ACTIVE_GIF).let { it.isFile && it.length() > 32L } -> AnimatedMedia.KIND_GIF
+            File(dir, FILE_ACTIVE_WEBP).let { it.isFile && it.length() > 32L } -> AnimatedMedia.KIND_WEBP
+            else -> AnimatedMedia.KIND_STATIC
+        }
+    }
+
+    fun isActiveAnimated(context: Context): Boolean =
+        AnimatedMedia.isAnimatedKind(activeKind(context))
+
+    fun activeFileForKind(context: Context, kind: String): File {
+        val name = when (kind) {
+            AnimatedMedia.KIND_GIF -> FILE_ACTIVE_GIF
+            AnimatedMedia.KIND_WEBP -> FILE_ACTIVE_WEBP
+            else -> FILE_ACTIVE
+        }
+        return File(context.applicationContext.filesDir, name)
+    }
+
+    /** Active file path for the current [activeKind]. */
     fun activeFile(context: Context): File =
-        File(context.applicationContext.filesDir, FILE_ACTIVE)
+        activeFileForKind(context, activeKind(context))
+
+    /** Animated active file if kind is gif/webp and the file exists; otherwise null. */
+    fun activeAnimatedFile(context: Context): File? {
+        if (!isActiveAnimated(context)) return null
+        val f = activeFile(context)
+        return if (f.isFile && f.length() > 32L) f else null
+    }
+
+    /** Source-space crop rect for active animated media, or null if unset/invalid. */
+    fun activeCropRect(context: Context): RectF? {
+        val raw = prefs(context).getString(KEY_ACTIVE_CROP, null) ?: return null
+        return decodeCropJson(raw)
+    }
+
+    /**
+     * Copy [src] to the correct active path for [kind], update prefs, remove sibling active files.
+     * Used by library apply / add and internal demo/static paths.
+     */
+    fun activateMedia(
+        context: Context,
+        src: File,
+        kind: String,
+        cropRect: RectF?,
+        activeId: String,
+        label: String?,
+    ) {
+        val app = context.applicationContext
+        val normalized = when {
+            AnimatedMedia.isAnimatedKind(kind) -> kind
+            else -> AnimatedMedia.KIND_STATIC
+        }
+        val dest = activeFileForKind(app, normalized)
+        if (src.absolutePath != dest.absolutePath) {
+            src.copyTo(dest, overwrite = true)
+        }
+        clearStaleActiveFiles(app, keepKind = normalized)
+        val edit = prefs(app).edit()
+            .putBoolean(KEY_HAS_IMAGE, true)
+            .putString(KEY_ACTIVE_ID, activeId)
+            .putString(KEY_ACTIVE_KIND, normalized)
+        if (label != null) {
+            edit.putString(KEY_CUSTOM_LABEL, label)
+        }
+        if (cropRect != null && isValidCrop(cropRect)) {
+            edit.putString(KEY_ACTIVE_CROP, encodeCropJson(cropRect))
+        } else {
+            edit.remove(KEY_ACTIVE_CROP)
+        }
+        edit.apply()
+        invalidateStripCache()
+    }
 
     fun demos(context: Context): List<Demo> = loadCatalog(context)
 
@@ -164,6 +265,20 @@ object WallpaperRepository {
     fun ensureSeeded(context: Context) {
         val f = activeFile(context)
         if (f.isFile && f.length() > 32L) return
+        // If kind points at a missing animated file, try any leftover active sibling before demos
+        val dir = context.applicationContext.filesDir
+        val fallback = listOf(FILE_ACTIVE, FILE_ACTIVE_GIF, FILE_ACTIVE_WEBP)
+            .map { File(dir, it) }
+            .firstOrNull { it.isFile && it.length() > 32L }
+        if (fallback != null) {
+            val kind = when (fallback.name) {
+                FILE_ACTIVE_GIF -> AnimatedMedia.KIND_GIF
+                FILE_ACTIVE_WEBP -> AnimatedMedia.KIND_WEBP
+                else -> AnimatedMedia.KIND_STATIC
+            }
+            prefs(context).edit().putString(KEY_ACTIVE_KIND, kind).apply()
+            return
+        }
         val id = activeId(context)
         if (!applyDemo(context, id)) {
             demos(context).firstOrNull()?.let { applyDemo(context, it.id) }
@@ -175,12 +290,16 @@ object WallpaperRepository {
         val demo = demos(context).firstOrNull { it.id == themeId } ?: return false
         val asset = demo.assetFor(isNightish(context))
         return runCatching {
+            val dest = activeFileForKind(context, AnimatedMedia.KIND_STATIC)
             context.assets.open(asset).use { input ->
-                FileOutputStream(activeFile(context)).use { out -> input.copyTo(out) }
+                FileOutputStream(dest).use { out -> input.copyTo(out) }
             }
+            clearStaleActiveFiles(context, keepKind = AnimatedMedia.KIND_STATIC)
             prefs(context).edit()
                 .putBoolean(KEY_HAS_IMAGE, true)
                 .putString(KEY_ACTIVE_ID, themeId)
+                .putString(KEY_ACTIVE_KIND, AnimatedMedia.KIND_STATIC)
+                .remove(KEY_ACTIVE_CROP)
                 .remove(KEY_CUSTOM_LABEL) // drop stale「夜色」等库标签
                 .apply()
             invalidateStripCache()
@@ -206,17 +325,70 @@ object WallpaperRepository {
         if (WallpaperLibrary.addAndActivate(context, bitmap, label) != null) return true
         return runCatching {
             val app = context.applicationContext
-            FileOutputStream(activeFile(app)).use { out ->
+            val dest = activeFileForKind(app, AnimatedMedia.KIND_STATIC)
+            FileOutputStream(dest).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
             }
+            clearStaleActiveFiles(app, keepKind = AnimatedMedia.KIND_STATIC)
             prefs(app).edit()
                 .putBoolean(KEY_HAS_IMAGE, true)
                 .putString(KEY_ACTIVE_ID, "custom")
+                .putString(KEY_ACTIVE_KIND, AnimatedMedia.KIND_STATIC)
+                .remove(KEY_ACTIVE_CROP)
                 .putString(KEY_CUSTOM_LABEL, label)
                 .apply()
             invalidateStripCache()
             true
         }.onFailure { Log.w(TAG, "commitCropped failed", it) }.getOrDefault(false)
+    }
+
+    /**
+     * Detect animated kind from magic bytes.
+     * @return [KIND_GIF] / [KIND_WEBP] if animated, else null (static).
+     */
+    fun detectAnimatedKind(bytes: ByteArray): String? {
+        val kind = AnimatedMedia.kindFromBytes(bytes)
+        return if (AnimatedMedia.isAnimatedKind(kind)) kind else null
+    }
+
+    /**
+     * Commit animated GIF/WebP bytes to library + active (kind + crop).
+     * Falls back to active-only write if library add fails.
+     * [mime] may be null (sniffed from bytes); [cropRect] null → no crop prefs.
+     */
+    fun commitAnimated(
+        context: Context,
+        bytes: ByteArray,
+        mime: String?,
+        cropRect: RectF?,
+        label: String = "导入",
+    ): Boolean {
+        val safeCrop = cropRect ?: RectF(0f, 0f, 0f, 0f)
+        val mimeOrKind = mime ?: AnimatedMedia.sniffMime(bytes) ?: ""
+        if (WallpaperLibrary.addAndActivateAnimated(context, bytes, mimeOrKind, label, safeCrop) != null) {
+            return true
+        }
+        return runCatching {
+            val app = context.applicationContext
+            val kind = AnimatedMedia.kindFromMimeOrBytes(mimeOrKind, bytes)
+            if (!AnimatedMedia.isAnimatedKind(kind) || bytes.size < 32) return@runCatching false
+            val dest = activeFileForKind(app, kind)
+            dest.writeBytes(bytes)
+            clearStaleActiveFiles(app, keepKind = kind)
+            val edit = prefs(app).edit()
+                .putBoolean(KEY_HAS_IMAGE, true)
+                .putString(KEY_ACTIVE_ID, "custom")
+                .putString(KEY_ACTIVE_KIND, kind)
+                .putString(KEY_CUSTOM_LABEL, label)
+            if (cropRect != null && isValidCrop(cropRect)) {
+                edit.putString(KEY_ACTIVE_CROP, encodeCropJson(cropRect))
+            } else {
+                edit.remove(KEY_ACTIVE_CROP)
+            }
+            edit.apply()
+            invalidateStripCache()
+            true
+        }.onFailure { Log.w(TAG, "commitAnimated failed", it) }.getOrDefault(false)
     }
 
     fun applyLibraryItem(context: Context, libId: String): Boolean =
@@ -457,6 +629,9 @@ object WallpaperRepository {
     /**
      * Decode + left-edge glass bake for cluster / home preview.
      * Cached by path · mtime · length · nightish (softener is CPU-heavy on HU).
+     *
+     * For animated kinds: first-frame decode (BitmapFactory), optional source crop,
+     * then scale + soften so static strip path keeps working.
      */
     fun decodeActiveForStrip(context: Context, nightish: Boolean): Bitmap? {
         ensureSeeded(context)
@@ -465,9 +640,10 @@ object WallpaperRepository {
         val path = f.absolutePath
         val mtime = f.lastModified()
         val length = f.length()
+        val cropKey = prefs(context).getString(KEY_ACTIVE_CROP, "") ?: ""
         stripCache?.let { hit ->
             if (hit.path == path && hit.mtime == mtime && hit.length == length &&
-                hit.nightish == nightish && !hit.bmp.isRecycled
+                hit.nightish == nightish && hit.cropKey == cropKey && !hit.bmp.isRecycled
             ) {
                 return hit.bmp
             }
@@ -475,7 +651,21 @@ object WallpaperRepository {
         val opts = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        val raw = BitmapFactory.decodeFile(path, opts) ?: return null
+        var raw = BitmapFactory.decodeFile(path, opts) ?: return null
+        val crop = activeCropRect(context)
+        if (crop != null && isValidCrop(crop) && raw.width > 0 && raw.height > 0) {
+            val l = crop.left.toInt().coerceIn(0, (raw.width - 1).coerceAtLeast(0))
+            val t = crop.top.toInt().coerceIn(0, (raw.height - 1).coerceAtLeast(0))
+            val r = crop.right.toInt().coerceIn(l + 1, raw.width)
+            val b = crop.bottom.toInt().coerceIn(t + 1, raw.height)
+            val w = r - l
+            val h = b - t
+            if (w > 0 && h > 0 && (l != 0 || t != 0 || r != raw.width || b != raw.height)) {
+                val cropped = Bitmap.createBitmap(raw, l, t, w, h)
+                if (cropped !== raw) raw.recycle()
+                raw = cropped
+            }
+        }
         val scaled = if (raw.width != StripGeometry.WALLPAPER_W || raw.height != StripGeometry.WALLPAPER_H) {
             Bitmap.createScaledBitmap(raw, StripGeometry.WALLPAPER_W, StripGeometry.WALLPAPER_H, true).also {
                 if (it !== raw) raw.recycle()
@@ -486,8 +676,25 @@ object WallpaperRepository {
         val fade = if (nightish) StripGeometry.EDGE_FEATHER_NIGHT else StripGeometry.EDGE_FEATHER_DAY
         val glass = if (nightish) StripGeometry.GLASS_NIGHT else StripGeometry.GLASS_DAY
         val baked = WallpaperEdgeSoftener.softenLeftEdge(scaled, fade, glass)
-        stripCache = StripCache(path, mtime, length, nightish, baked)
+        stripCache = StripCache(path, mtime, length, nightish, cropKey, baked)
         return baked
+    }
+
+    /**
+     * Load the active file as a [Drawable] via [ImageDecoder] (supports animated GIF/WebP).
+     * Caller should start() if result is AnimatedImageDrawable. Returns null on failure.
+     */
+    fun loadActiveDrawable(context: Context): Drawable? {
+        if (!isActiveAnimated(context)) return null
+        return decodeDrawableFile(activeFile(context))
+    }
+
+    /** Decode any local image file to a Drawable (animated GIF/WebP preserved). */
+    fun decodeDrawableFile(file: File): Drawable? {
+        if (!file.isFile || file.length() < 32L) return null
+        return runCatching {
+            ImageDecoder.decodeDrawable(ImageDecoder.createSource(file))
+        }.onFailure { Log.w(TAG, "decodeDrawable failed ${file.name}", it) }.getOrNull()
     }
 
     fun invalidateStripCache() {
@@ -499,6 +706,7 @@ object WallpaperRepository {
         val mtime: Long,
         val length: Long,
         val nightish: Boolean,
+        val cropKey: String,
         val bmp: Bitmap,
     )
 
@@ -523,6 +731,42 @@ object WallpaperRepository {
                 com.starlive.app.night.RemoteNightMode(context).isNightish()
             }
         }
+    }
+
+    private fun clearStaleActiveFiles(context: Context, keepKind: String) {
+        val dir = context.applicationContext.filesDir
+        val keep = when (keepKind) {
+            AnimatedMedia.KIND_GIF -> FILE_ACTIVE_GIF
+            AnimatedMedia.KIND_WEBP -> FILE_ACTIVE_WEBP
+            else -> FILE_ACTIVE
+        }
+        for (name in listOf(FILE_ACTIVE, FILE_ACTIVE_GIF, FILE_ACTIVE_WEBP)) {
+            if (name == keep) continue
+            runCatching { File(dir, name).delete() }
+        }
+    }
+
+    internal fun isValidCrop(rect: RectF): Boolean =
+        rect.right > rect.left && rect.bottom > rect.top
+
+    internal fun encodeCropJson(rect: RectF): String =
+        JSONObject()
+            .put("l", rect.left.toDouble())
+            .put("t", rect.top.toDouble())
+            .put("r", rect.right.toDouble())
+            .put("b", rect.bottom.toDouble())
+            .toString()
+
+    internal fun decodeCropJson(raw: String): RectF? {
+        return runCatching {
+            val o = JSONObject(raw)
+            val l = o.getDouble("l").toFloat()
+            val t = o.getDouble("t").toFloat()
+            val r = o.getDouble("r").toFloat()
+            val b = o.getDouble("b").toFloat()
+            val rect = RectF(l, t, r, b)
+            if (isValidCrop(rect)) rect else null
+        }.getOrNull()
     }
 
     private fun loadCatalog(context: Context): List<Demo> {

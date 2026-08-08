@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.starlive.app.BuildConfig
+import com.starlive.app.R
 import com.starlive.app.contact.ContactConfig
 import com.starlive.app.ui.UiTokens.applyRoundedBg
 import com.starlive.app.ui.UiTokens.dp
@@ -42,6 +43,30 @@ class AuthorActivity : AppCompatActivity() {
             UiKit.caption(this, "星澜与 Lyra 由同一作者维护")
                 .also { it.setPadding(0, dp(6), 0, dp(12)) },
         )
+
+        // Brand mark B — photographic 星环光环
+        runCatching {
+            assets.open("about/logo_brand.png").use { stream ->
+                val bmp = BitmapFactory.decodeStream(stream) ?: return@use
+                col.addView(
+                    ImageView(this).apply {
+                        setImageBitmap(bmp)
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        contentDescription = getString(R.string.app_name)
+                        layoutParams = LinearLayout.LayoutParams(dp(96), dp(96)).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            bottomMargin = dp(14)
+                        }
+                        clipToOutline = true
+                        outlineProvider = object : android.view.ViewOutlineProvider() {
+                            override fun getOutline(view: android.view.View, outline: android.graphics.Outline) {
+                                outline.setRoundRect(0, 0, view.width, view.height, dp(22).toFloat())
+                            }
+                        }
+                    },
+                )
+            }
+        }
 
         val card = UiKit.card(this)
         card.addView(

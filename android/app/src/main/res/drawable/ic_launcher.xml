@@ -1,16 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  StarLive · Gargantua 星环 (vector fallback).
+  Hero: dark void + luminous accretion ring. Home uses ic_launcher_bitmap.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
     <path
-        android:fillColor="#0B0E12"
+        android:fillColor="#06080C"
         android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Soft ambient -->
     <path
-        android:fillColor="#5B8DEF"
-        android:pathData="M54,28c-8,0 -14,6 -14,14 0,10 14,26 14,26s14,-16 14,-26c0,-8 -6,-14 -14,-14z" />
+        android:fillColor="#185B8DEF"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+
+    <!-- Accretion disk (outer ellipse band) — the 星环 -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,38m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+        android:pathData="M18,54 a36,12 0,1 1,72 0 a36,12 0,1 1,-72 0"
+        android:strokeWidth="7"
+        android:strokeColor="#7AA5F5"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M22,54 a32,10 0,1 1,64 0 a32,10 0,1 1,-64 0"
+        android:strokeWidth="3.5"
+        android:strokeColor="#D0E4FF"
+        android:fillColor="#00000000" />
+    <!-- Hot side highlight (right) -->
+    <path
+        android:pathData="M78,48 a8,6 0,0 1,8 12"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round" />
+
+    <!-- Event horizon void -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54,54m-18,0a18,18 0,1 1,36 0a18,18 0,1 1,-36 0" />
+
+    <!-- Photon ring -->
+    <path
+        android:pathData="M54,54m-19.5,0a19.5,19.5 0,1 1,39 0a19.5,19.5 0,1 1,-39 0"
+        android:strokeWidth="1.6"
+        android:strokeColor="#E8F2FF"
+        android:fillColor="#00000000" />
+
+    <!-- Front disk segment over void (bottom) -->
+    <path
+        android:pathData="M36,58 a20,7 0,0 0,36 0"
+        android:strokeWidth="4"
+        android:strokeColor="#C8DCFF"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round" />
 </vector>

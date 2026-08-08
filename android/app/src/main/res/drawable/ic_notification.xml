@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome Gargantua 星环 for status bar -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Disk -->
+    <path
+        android:pathData="M2.5,12 a9.5,3.2 0,1 1,19 0 a9.5,3.2 0,1 1,-19 0"
+        android:strokeWidth="2.2"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000" />
+
+    <!-- Void -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.2"
+        android:pathData="M12,12m-4.2,0a4.2,4.2 0,1 1,8.4 0a4.2,4.2 0,1 1,-8.4 0" />
+
+    <!-- Photon ring -->
+    <path
+        android:pathData="M12,12m-4.6,0a4.6,4.6 0,1 1,9.2 0a4.6,4.6 0,1 1,-9.2 0"
+        android:strokeWidth="1.1"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000" />
+</vector>
